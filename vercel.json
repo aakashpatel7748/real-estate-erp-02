@@ -3,7 +3,7 @@
   "buildCommand": "npm run build --workspace @erp/web",
   "outputDirectory": "apps/web/dist",
   "functions": {
-    "api/index.ts": {
+    "api/index.js": {
       "maxDuration": 30,
       "memory": 1024
     }
@@ -11,11 +11,11 @@
   "rewrites": [
     {
       "source": "/api/(.*)",
-      "destination": "/api"
+      "destination": "/api/index.js"
     },
     {
       "source": "/api",
-      "destination": "/api"
+      "destination": "/api/index.js"
     },
     {
       "source": "/((?!api).*)",

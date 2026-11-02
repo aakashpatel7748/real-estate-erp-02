@@ -1,16 +1,20 @@
+import dns from 'dns';
 import type { Request, Response } from 'express';
 import mongoose from 'mongoose';
-import { createApp } from '../apps/api/src/app';
-import { connectDb } from '../apps/api/src/config/db';
+import { createApp } from './app';
+import { connectDb } from './config/db';
+
+try {
+  dns.setServers(['8.8.8.8', '1.1.1.1']);
+} catch {
+  // Ignore in environments where setting DNS servers is not allowed
+}
 
 const app = createApp();
-
 let connectPromise: Promise<any> | null = null;
 
 async function ensureDb() {
-  if (mongoose.connection.readyState === 1) {
-    return;
-  }
+  if (mongoose.connection.readyState === 1) return;
   if (!connectPromise) {
     connectPromise = connectDb().catch((err) => {
       connectPromise = null;
@@ -42,4 +46,3 @@ export default async function handler(req: Request, res: Response) {
 
   return app(req, res);
 }
-
