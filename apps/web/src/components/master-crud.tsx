@@ -115,7 +115,7 @@ export function FormFields({
               </div>
             );
           }
-          let control: React.ReactElement;
+          let control: React.ReactElement<{ 'aria-invalid'?: boolean; 'aria-describedby'?: string; id?: string }>;
           switch (f.type) {
             case 'textarea':
               control = <Textarea rows={4} value={String(value ?? '')} onChange={(e) => set(e.target.value)} placeholder={f.placeholder} />;
@@ -197,6 +197,8 @@ export interface MasterCrudProps<T extends { id: string }> {
   empty?: React.ReactNode;
   /** Tweak the payload before saving (computed fields). */
   transform?: (payload: Values, values: Values) => Values;
+  /** Derive extra form values from a row when editing (inverse of `transform`). */
+  prepareForm?: (row: T, values: Values) => Values;
 }
 
 /** List + search + filters + create/edit sheet for a master collection. */
@@ -312,7 +314,8 @@ function MasterSheet<T extends { id: string; name?: string }>({ props, editing, 
   const [errors, setErrors] = React.useState<Record<string, string>>({});
   React.useEffect(() => {
     if (editing) {
-      setValues(toFormValues(props.fields, row as Values | undefined, props.defaults));
+      const v = toFormValues(props.fields, row as Values | undefined, props.defaults);
+      setValues(row && props.prepareForm ? props.prepareForm(row, v) : v);
       setErrors({});
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps

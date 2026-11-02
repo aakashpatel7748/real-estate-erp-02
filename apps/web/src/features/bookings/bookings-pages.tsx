@@ -17,7 +17,8 @@ import { DataTable, type Column } from '@/components/data-table';
 import { DescriptionList, Field, PageHeader, StatCard, StatusBadge } from '@/components/common';
 import { EmptyState, ErrorState, PageSkeleton } from '@/components/states';
 import { SearchInput } from '@/components/search-input';
-import { MoneyInput, toPaise } from '@/components/money';
+import { ChargePicker, type ChargeRow } from '@/components/charge-picker';
+import { MoneyInput, paiseToInput, toPaise } from '@/components/money';
 import { DocumentsPanel } from '@/components/documents-panel';
 import type { Customer } from '@/features/customers/customers-pages';
 import { CustomerFormSheet } from '@/features/customers/customers-pages';
@@ -172,7 +173,8 @@ export function NewBookingPage() {
   const [mode, setMode] = React.useState<'book' | 'reserve'>('book');
   const [reservationHours, setReservationHours] = React.useState('72');
   const [discount, setDiscount] = React.useState('');
-  const [charges, setCharges] = React.useState<{ name: string; amount: string }[]>([]);
+  const [charges, setCharges] = React.useState<ChargeRow[]>([]);
+  const quotationId = params.get('quotation') ?? undefined;
   const [remarks, setRemarks] = React.useState('');
   const [brokerId, setBrokerId] = React.useState('');
   const brokers = useQuery({
@@ -181,6 +183,33 @@ export function NewBookingPage() {
     enabled: can('brokers.read'),
   });
   const idempotencyKey = React.useRef(newIdempotencyKey());
+
+  // Converting a saved quotation: prefill units, plan, discount and charges.
+  const fromQuote = useQuery({
+    queryKey: ['quotation', quotationId, 'prefill'],
+    queryFn: () =>
+      api.get<{
+        number: string;
+        projectId: { id: string };
+        plotIds: string[];
+        paymentPlanId: string;
+        discountPaise: number;
+        charges: { name: string; amountPaise: number }[];
+        customerId?: { id: string; name: string; phone: string; customerCode: string };
+      }>(`/quotations/${quotationId}`),
+    enabled: Boolean(quotationId),
+    staleTime: Infinity,
+  });
+  React.useEffect(() => {
+    const q = fromQuote.data;
+    if (!q) return;
+    setProjectId(q.projectId.id);
+    setPlotIds(q.plotIds);
+    setPlanId(q.paymentPlanId);
+    setDiscount(q.discountPaise ? paiseToInput(q.discountPaise) : '');
+    setCharges(q.charges.map((c) => ({ name: c.name, amount: paiseToInput(c.amountPaise) })));
+    if (q.customerId) setCustomer(q.customerId);
+  }, [fromQuote.data]);
 
   const preCustomer = params.get('customer');
   useQuery({
@@ -254,6 +283,7 @@ export function NewBookingPage() {
           charges: chargeRows,
           remarks: remarks || undefined,
           brokerId: brokerId || undefined,
+          quotationId,
         },
         idempotencyKey.current,
       ),
@@ -286,7 +316,7 @@ export function NewBookingPage() {
     <>
       <PageHeader
         breadcrumbs={[{ label: 'Bookings', to: '/post-sales/bookings' }, { label: 'New booking' }]}
-        title="New booking"
+        title={fromQuote.data ? `New booking from ${fromQuote.data.number}` : 'New booking'}
         description="Plots are held only when you submit; availability is re-checked at that moment."
       />
       <div className="grid gap-6 xl:grid-cols-[1fr_400px]">
@@ -303,6 +333,7 @@ export function NewBookingPage() {
                     setProjectId(e.target.value);
                     setPlotIds([]);
                     setPlanId('');
+                    setCharges((cs) => cs.filter((c) => !c.masterId));
                   }}
                 >
                   <option value="">Choose…</option>
@@ -480,6 +511,7 @@ export function NewBookingPage() {
                     <Plus /> Add charge
                   </Button>
                 </div>
+                {projectId && <ChargePicker projectId={projectId} plotIds={plotIds} charges={charges} setCharges={setCharges} />}
                 {charges.map((c, i) => (
                   <div key={i} className="mb-2 grid grid-cols-[1fr_160px_auto] gap-2">
                     <Input

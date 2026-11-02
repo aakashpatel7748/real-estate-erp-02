@@ -132,9 +132,17 @@ export async function requestPage<T>(path: string, opts: RequestOptions = {}): P
   return { items: data, meta: meta ?? { page: 1, pageSize: data.length, total: data.length, totalPages: 1 } };
 }
 
+/** Like requestPage, plus the response headers (e.g. `x-total-amount` for filtered totals). */
+export async function requestPageWithHeaders<T>(path: string, opts: RequestOptions = {}) {
+  const res = await rawRequest(path, opts);
+  const { data, meta } = await parse<T[]>(res);
+  return { items: data, meta: meta ?? { page: 1, pageSize: data.length, total: data.length, totalPages: 1 }, headers: res.headers };
+}
+
 export const api = {
   get: <T>(path: string, query?: RequestOptions['query']) => request<T>(path, { query }),
   page: <T>(path: string, query?: RequestOptions['query']) => requestPage<T>(path, { query }),
+  pageWithHeaders: <T>(path: string, query?: RequestOptions['query']) => requestPageWithHeaders<T>(path, { query }),
   post: <T>(path: string, body?: unknown, idempotencyKey?: string) =>
     request<T>(path, { method: 'POST', body: body ?? {}, idempotencyKey }),
   patch: <T>(path: string, body: unknown) => request<T>(path, { method: 'PATCH', body }),

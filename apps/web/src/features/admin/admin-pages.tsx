@@ -571,10 +571,20 @@ interface Company {
   phone?: string;
   email?: string;
   address?: { line1?: string; city?: string; state?: string; pincode?: string };
-  settings: { overpaymentPolicy: string; reservationHoldHours: number; receiptPrefix: string; bookingPrefix: string };
+  settings: {
+    overpaymentPolicy: string;
+    reservationHoldHours: number;
+    receiptPrefix: string;
+    bookingPrefix: string;
+    quotationValidityDays?: number;
+    demandLeadDays?: number;
+    registryRequiresFullPayment?: boolean;
+    possessionRequiresFullPayment?: boolean;
+    lateInterestBpPerMonth?: number;
+  };
 }
 
-export function CompanySettingsPage() {
+export function CompanySettingsPage({ section = 'profile' }: { section?: 'profile' | 'settings' }) {
   const qc = useQueryClient();
   const { can, reload } = useAuth();
   const q = useQuery({ queryKey: ['company'], queryFn: () => api.get<Company>('/company') });
@@ -592,7 +602,13 @@ export function CompanySettingsPage() {
         phone: c.phone || undefined,
         email: c.email || undefined,
         address: c.address,
-        settings: { ...c.settings, reservationHoldHours: Number(c.settings.reservationHoldHours) },
+        settings: {
+          ...c.settings,
+          reservationHoldHours: Number(c.settings.reservationHoldHours),
+          quotationValidityDays: Number(c.settings.quotationValidityDays ?? 15),
+          demandLeadDays: Number(c.settings.demandLeadDays ?? 15),
+          lateInterestBpPerMonth: Number(c.settings.lateInterestBpPerMonth ?? 0),
+        },
       }),
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ['company'] });
@@ -609,8 +625,12 @@ export function CompanySettingsPage() {
   const setA = (patch: Partial<NonNullable<Company['address']>>) => setForm((f) => ({ ...f!, address: { ...f!.address, ...patch } }));
   return (
     <>
-      <PageHeader title="Company settings" description="Appears on receipts and allotment letters" />
+      <PageHeader
+        title={section === 'profile' ? 'Company Profile' : 'Settings'}
+        description={section === 'profile' ? 'Appears on receipts, letters, quotations and agreements' : 'Numbering, sales rules and post-sales controls'}
+      />
       <div className="grid gap-4 lg:grid-cols-2">
+        {section === 'profile' && (
         <Card>
           <CardHeader>
             <CardTitle>Profile</CardTitle>
@@ -648,6 +668,9 @@ export function CompanySettingsPage() {
             </Field>
           </CardContent>
         </Card>
+        )}
+        {section === 'settings' && (
+        <>
         <Card>
           <CardHeader>
             <CardTitle>Sales & receipts</CardTitle>
@@ -696,8 +719,60 @@ export function CompanySettingsPage() {
                 onChange={(e) => setS({ receiptPrefix: e.target.value.toUpperCase() })}
               />
             </Field>
+            <Field label="Quotation validity (days)" htmlFor="co-qv">
+              <Input
+                disabled={disabled}
+                inputMode="numeric"
+                value={String(form.settings.quotationValidityDays ?? 15)}
+                onChange={(e) => setS({ quotationValidityDays: Number(e.target.value) || 0 })}
+              />
+            </Field>
           </CardContent>
         </Card>
+        <Card>
+          <CardHeader>
+            <CardTitle>Post sales & collections</CardTitle>
+          </CardHeader>
+          <CardContent className="grid gap-4 sm:grid-cols-2">
+            <Field label="Demand letters include dues within (days)" htmlFor="co-dl">
+              <Input
+                disabled={disabled}
+                inputMode="numeric"
+                value={String(form.settings.demandLeadDays ?? 15)}
+                onChange={(e) => setS({ demandLeadDays: Number(e.target.value) || 0 })}
+              />
+            </Field>
+            <Field label="Late payment interest (% per month)" htmlFor="co-li" hint="Printed on demand letters">
+              <Input
+                disabled={disabled}
+                inputMode="decimal"
+                value={String((form.settings.lateInterestBpPerMonth ?? 0) / 100)}
+                onChange={(e) => setS({ lateInterestBpPerMonth: Math.round(Number(e.target.value || 0) * 100) })}
+              />
+            </Field>
+            <div className="flex items-center gap-2 sm:col-span-2">
+              <Checkbox
+                id="co-reg"
+                disabled={disabled}
+                checked={form.settings.registryRequiresFullPayment ?? true}
+                onCheckedChange={(c) => setS({ registryRequiresFullPayment: c === true })}
+              />
+              <Label htmlFor="co-reg">Require full payment before sale-deed registry</Label>
+            </div>
+            <div className="flex items-center gap-2 sm:col-span-2">
+              <Checkbox
+                id="co-pos"
+                disabled={disabled}
+                checked={form.settings.possessionRequiresFullPayment ?? true}
+                onCheckedChange={(c) => setS({ possessionRequiresFullPayment: c === true })}
+              />
+              <Label htmlFor="co-pos">Require full payment before possession</Label>
+            </div>
+            <p className="text-xs text-muted-foreground sm:col-span-2">An authorised user can still proceed with an override and a written remark.</p>
+          </CardContent>
+        </Card>
+        </>
+        )}
       </div>
       {!disabled && (
         <div className="mt-4 flex justify-end">
