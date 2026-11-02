@@ -77,7 +77,7 @@ function Sidebar({ collapsed, onNavigate }: { collapsed: boolean; onNavigate?: (
     );
 
   return (
-    <nav aria-label="Main" className="flex-1 overflow-y-auto px-3 py-4">
+    <nav aria-label="Main" className="flex-1 overflow-y-auto px-3 py-4 no-scrollbar [scrollbar-width:none] [-ms-overflow-style:none] [&::-webkit-scrollbar]:hidden">
       {can('dashboard.read') && (
         <div className="mb-3">
           {collapsed ? (

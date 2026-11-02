@@ -10,13 +10,25 @@
 import { spawn } from 'node:child_process';
 import { mkdirSync } from 'node:fs';
 import { createRequire } from 'node:module';
+import { fileURLToPath } from 'node:url';
 
 // Resolve the driver through the API workspace (it is a mongoose dependency).
-const { MongoClient } = createRequire(new URL('../apps/api/package.json', import.meta.url))('mongodb');
+const require = createRequire(new URL('../apps/api/package.json', import.meta.url));
+const { MongoClient } = require('mongodb');
 
-const bin = process.env.MONGOD_BIN ?? 'mongod';
+async function getBin() {
+  if (process.env.MONGOD_BIN) return process.env.MONGOD_BIN;
+  try {
+    const { MongoBinary } = require('mongodb-memory-server');
+    return await MongoBinary.getPath();
+  } catch {
+    return 'mongod';
+  }
+}
+
+const bin = await getBin();
 const port = Number(process.env.MONGO_PORT ?? 27017);
-const dbPath = new URL('../.data/db', import.meta.url).pathname;
+const dbPath = fileURLToPath(new URL('../.data/db', import.meta.url));
 mkdirSync(dbPath, { recursive: true });
 
 const child = spawn(bin, ['--replSet', 'rs0', '--port', String(port), '--dbpath', dbPath, '--bind_ip', '127.0.0.1'], { stdio: 'inherit' });
