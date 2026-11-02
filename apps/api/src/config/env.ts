@@ -2,6 +2,14 @@ import { z } from 'zod';
 
 const bool = z.enum(['true', 'false', '1', '0']).transform((v) => v === 'true' || v === '1');
 
+const defaultAppUrl = process.env.APP_URL
+  ? process.env.APP_URL
+  : process.env.VERCEL_PROJECT_PRODUCTION_URL
+    ? `https://${process.env.VERCEL_PROJECT_PRODUCTION_URL}`
+    : process.env.VERCEL_URL
+      ? `https://${process.env.VERCEL_URL}`
+      : 'http://localhost:5173';
+
 const schema = z.object({
   NODE_ENV: z.enum(['development', 'test', 'production']).default('development'),
   PORT: z.coerce.number().int().default(4000),
@@ -12,7 +20,7 @@ const schema = z.object({
   /** Comma-separated list of allowed browser origins. */
   CORS_ORIGINS: z.string().default('http://localhost:5173'),
   /** Public URL of the web app, used in email links. */
-  APP_URL: z.string().url().default('http://localhost:5173'),
+  APP_URL: z.string().url().default(defaultAppUrl),
   COOKIE_SECURE: bool.optional(),
   TRUST_PROXY: z.coerce.number().int().min(0).default(0),
   LOG_LEVEL: z.enum(['fatal', 'error', 'warn', 'info', 'debug', 'trace', 'silent']).default('info'),
@@ -22,7 +30,7 @@ const schema = z.object({
   FOLLOWUP_REMINDER_CRON: z.string().default('*/30 * * * *'),
   /** `local` (dev/single server) or `s3` (any S3-compatible private bucket). */
   STORAGE_DRIVER: z.enum(['local', 's3']).default('local'),
-  STORAGE_LOCAL_DIR: z.string().default('.data/uploads'),
+  STORAGE_LOCAL_DIR: z.string().default(process.env.VERCEL ? '/tmp/uploads' : '.data/uploads'),
   S3_BUCKET: z.string().optional(),
   S3_REGION: z.string().default('ap-south-1'),
   S3_ENDPOINT: z.string().url().optional(),
@@ -58,7 +66,7 @@ function load(): Env {
     ...e,
     isProd,
     isTest: e.NODE_ENV === 'test',
-    cookieSecure: e.COOKIE_SECURE ?? isProd,
+    cookieSecure: e.COOKIE_SECURE ?? (isProd || Boolean(process.env.VERCEL)),
     corsOrigins: e.CORS_ORIGINS.split(',')
       .map((s) => s.trim())
       .filter(Boolean),

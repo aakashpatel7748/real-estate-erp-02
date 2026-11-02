@@ -3,6 +3,7 @@
   "private": true,
   "version": "0.1.0",
   "description": "Real estate colony management ERP (MERN + TypeScript)",
+  "type": "module",
   "workspaces": [
     "packages/shared",
     "apps/api",
@@ -16,6 +17,7 @@
     "dev:api": "npm run dev --workspace @erp/api",
     "dev:web": "npm run dev --workspace @erp/web",
     "build": "npm run build --workspace @erp/api && npm run build --workspace @erp/web",
+    "build:web": "npm run build --workspace @erp/web",
     "typecheck": "npm run typecheck --workspaces --if-present",
     "test": "npm run test --workspaces --if-present",
     "lint": "npm run typecheck",

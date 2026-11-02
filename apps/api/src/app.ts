@@ -44,7 +44,7 @@ import { logger } from './utils/logger';
 export function createApp() {
   const app = express();
   app.disable('x-powered-by');
-  app.set('trust proxy', env.TRUST_PROXY);
+  app.set('trust proxy', env.TRUST_PROXY || (process.env.VERCEL ? 1 : 0));
 
   app.use(requestId);
   app.use(
@@ -62,7 +62,13 @@ export function createApp() {
   );
   app.use(
     cors({
-      origin: (origin, cb) => cb(null, !origin || env.corsOrigins.includes(origin)),
+      origin: (origin, cb) => {
+        if (!origin) return cb(null, true);
+        if (env.corsOrigins.includes(origin)) return cb(null, true);
+        if (origin.endsWith('.vercel.app')) return cb(null, true);
+        if (process.env.VERCEL_URL && origin.includes(process.env.VERCEL_URL)) return cb(null, true);
+        return cb(null, false);
+      },
       credentials: true,
       exposedHeaders: ['x-request-id', 'idempotent-replayed', 'content-disposition', 'x-total-amount'],
     }),
