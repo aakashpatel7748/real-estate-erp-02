@@ -59,7 +59,9 @@ reportsRouter.get('/search', validate({ query: z.object({ q: z.string().trim().m
           deletedAt: null,
           $and: [
             { $or: [{ name: rx }, { phone: rx }] },
-            ctx.projectScope === null ? {} : { $or: [{ projectId: { $in: ctx.projectScope } }, { assignedTo: ctx.userId }, { createdBy: ctx.userId }] },
+            ctx.projectScope === null
+              ? {}
+              : { $or: [{ projectId: { $in: ctx.projectScope } }, { assignedTo: ctx.userId }, { createdBy: ctx.userId }] },
           ],
         })
           .select('name phone status')

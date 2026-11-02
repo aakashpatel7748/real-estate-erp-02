@@ -470,7 +470,9 @@ export async function closeBooking(
     journalIds.push(rev._id);
   }
   // Ledger adjustments (credit/debit notes) are part of the receivable: unwind them with the sale.
-  const adjustments = await LedgerAdjustment.find({ companyId: actor.companyId, bookingId: booking._id, status: 'posted' }).session(session).lean();
+  const adjustments = await LedgerAdjustment.find({ companyId: actor.companyId, bookingId: booking._id, status: 'posted' })
+    .session(session)
+    .lean();
   for (const adj of adjustments) {
     if (!adj.journalEntryId) continue;
     const rev = await reverseJournal(actor, adj.journalEntryId, `Booking ${booking.bookingNumber} ${to}`, session, today);

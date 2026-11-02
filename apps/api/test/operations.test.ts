@@ -29,9 +29,12 @@ describe('land acquisition', () => {
         .expect(201)
     ).body.data;
     // Duplicate khasra in the same village is rejected.
-    await http.post('/land', { khasraNumber: '214/2', village: 'Kolua Kalan', district: 'Bhopal', state: 'Madhya Pradesh', areaX100: 1 }).expect(409);
+    await http
+      .post('/land', { khasraNumber: '214/2', village: 'Kolua Kalan', district: 'Bhopal', state: 'Madhya Pradesh', areaX100: 1 })
+      .expect(409);
 
-    const pay = (amount: number) => http.post(`/land/${parcel.id}/payments`, { amountPaise: amount, paidOn: '2026-05-01', mode: 'rtgs', payee: 'Ram Singh' }, key());
+    const pay = (amount: number) =>
+      http.post(`/land/${parcel.id}/payments`, { amountPaise: amount, paidOn: '2026-05-01', mode: 'rtgs', payee: 'Ram Singh' }, key());
     expect((await pay(10_00_000_00)).status).toBe(422); // no payments during negotiation
     await http.post(`/land/${parcel.id}/status`, { status: 'registered' }).expect(422); // must pass through agreement
     await http.post(`/land/${parcel.id}/status`, { status: 'agreement', date: '2026-04-20' }).expect(200);
@@ -63,12 +66,24 @@ describe('CRM', () => {
     const http = api(s);
     const lead = (
       await http
-        .post('/leads', { projectId: inv.project.id, name: 'Neha Jain', phone: '+91 90000 11111', source: 'facebook', interestedPlotIds: [inv.plots[0]!.id] })
+        .post('/leads', {
+          projectId: inv.project.id,
+          name: 'Neha Jain',
+          phone: '+91 90000 11111',
+          source: 'facebook',
+          interestedPlotIds: [inv.plots[0]!.id],
+        })
         .expect(201)
     ).body.data;
     expect(lead.status).toBe('new');
 
-    await http.post(`/leads/${lead.id}/activities`, { type: 'call', summary: 'Discussed corner plots', nextFollowUpAt: new Date(Date.now() - 60_000).toISOString() }).expect(201);
+    await http
+      .post(`/leads/${lead.id}/activities`, {
+        type: 'call',
+        summary: 'Discussed corner plots',
+        nextFollowUpAt: new Date(Date.now() - 60_000).toISOString(),
+      })
+      .expect(201);
     let detail = (await http.get(`/leads/${lead.id}`).expect(200)).body.data;
     expect(detail.status).toBe('contacted');
     expect(detail.activities.map((a: { type: string }) => a.type)).toEqual(['call', 'note']);
@@ -89,7 +104,10 @@ describe('CRM', () => {
 
     // A second lead with a known phone links the existing customer instead of duplicating it.
     const again = (await http.post('/leads', { name: 'Neha J', phone: '+91 90000 11111' }).expect(201)).body.data;
-    expect((await http.post(`/leads/${again.id}/convert`).expect(200)).body.data).toMatchObject({ customerId: conv.customerId, linkedExisting: true });
+    expect((await http.post(`/leads/${again.id}/convert`).expect(200)).body.data).toMatchObject({
+      customerId: conv.customerId,
+      linkedExisting: true,
+    });
 
     const summary = (await http.get('/leads/summary').expect(200)).body.data;
     expect(summary.byStatus.won).toBe(2);
@@ -99,7 +117,16 @@ describe('CRM', () => {
   it('sends one follow-up reminder per lead per day to the assignee', async () => {
     const s = await registerCompany();
     const http = api(s);
-    const lead = (await http.post('/leads', { name: 'Follow Me', phone: '+91 90000 22222', assignedTo: s.userId, nextFollowUpAt: new Date(Date.now() - 1000).toISOString() }).expect(201)).body.data;
+    const lead = (
+      await http
+        .post('/leads', {
+          name: 'Follow Me',
+          phone: '+91 90000 22222',
+          assignedTo: s.userId,
+          nextFollowUpAt: new Date(Date.now() - 1000).toISOString(),
+        })
+        .expect(201)
+    ).body.data;
     const { runFollowUpReminders } = await import('../src/modules/crm/crm.service');
     await runFollowUpReminders();
     await runFollowUpReminders();
@@ -113,7 +140,8 @@ describe('vendors, work orders and expenses', () => {
     const s = await registerCompany();
     const inv = await setupInventory(s, 1, 'CON');
     const http = api(s);
-    const vendor = (await http.post('/vendors', { name: 'Shree Road Builders', category: 'road', gstin: '23ABCDE1234F1Z5' }).expect(201)).body.data;
+    const vendor = (await http.post('/vendors', { name: 'Shree Road Builders', category: 'road', gstin: '23ABCDE1234F1Z5' }).expect(201))
+      .body.data;
     const wo = (
       await http
         .post('/work-orders', {
@@ -121,7 +149,10 @@ describe('vendors, work orders and expenses', () => {
           vendorId: vendor.id,
           title: 'Internal roads phase 1',
           amountPaise: 10_00_000_00,
-          milestones: [{ name: 'Base course', percentBp: 4_000 }, { name: 'Bitumen', percentBp: 6_000 }],
+          milestones: [
+            { name: 'Base course', percentBp: 4_000 },
+            { name: 'Bitumen', percentBp: 6_000 },
+          ],
         })
         .expect(201)
     ).body.data;
@@ -130,7 +161,17 @@ describe('vendors, work orders and expenses', () => {
     const bill = (amount: number, extra: object = {}) =>
       http.post(
         '/expenses',
-        { projectId: inv.project.id, vendorId: vendor.id, workOrderId: wo.id, expenseAccountId: dev, date: '2026-06-01', amountPaise: amount, description: 'RA bill', settlement: 'payable', ...extra },
+        {
+          projectId: inv.project.id,
+          vendorId: vendor.id,
+          workOrderId: wo.id,
+          expenseAccountId: dev,
+          date: '2026-06-01',
+          amountPaise: amount,
+          description: 'RA bill',
+          settlement: 'payable',
+          ...extra,
+        },
         key(),
       );
 
@@ -149,7 +190,9 @@ describe('vendors, work orders and expenses', () => {
 
     // Vendor payments cannot exceed what is owed.
     await http.post(`/vendors/${vendor.id}/payments`, { amountPaise: 9_00_000_01, paidOn: '2026-06-10', mode: 'neft' }, key()).expect(422);
-    await http.post(`/vendors/${vendor.id}/payments`, { amountPaise: 8_00_000_00, paidOn: '2026-06-10', mode: 'neft', reference: 'UTR9' }, key()).expect(201);
+    await http
+      .post(`/vendors/${vendor.id}/payments`, { amountPaise: 8_00_000_00, paidOn: '2026-06-10', mode: 'neft', reference: 'UTR9' }, key())
+      .expect(201);
     v = (await http.get(`/vendors/${vendor.id}`).expect(200)).body.data;
     expect(v.payableBalancePaise).toBe(1_00_000_00);
 
@@ -170,7 +213,21 @@ describe('vendors, work orders and expenses', () => {
       .expect(422);
 
     // Direct paid expense, then reversal of an unpaid bill restores the order's headroom.
-    await http.post('/expenses', { projectId: inv.project.id, expenseAccountId: dev, date: '2026-06-12', amountPaise: 25_000_00, description: 'Site electricity', settlement: 'paid', mode: 'upi' }, key()).expect(201);
+    await http
+      .post(
+        '/expenses',
+        {
+          projectId: inv.project.id,
+          expenseAccountId: dev,
+          date: '2026-06-12',
+          amountPaise: 25_000_00,
+          description: 'Site electricity',
+          settlement: 'paid',
+          mode: 'upi',
+        },
+        key(),
+      )
+      .expect(201);
     const small = (await bill(50_000_00)).body.data;
     await http.post(`/expenses/${small.id}/reverse`, { reason: 'duplicate bill' }).expect(200);
     const after = (await http.get(`/work-orders/${wo.id}`).expect(200)).body.data;
@@ -202,7 +259,8 @@ describe('broker commissions', () => {
     const s = await registerCompany();
     const inv = await setupInventory(s, 3, 'BRK');
     const http = api(s);
-    const broker = (await http.post('/brokers', { name: 'Vikas Realty', phone: '+91 91111 22222', commissionBp: 200 }).expect(201)).body.data;
+    const broker = (await http.post('/brokers', { name: 'Vikas Realty', phone: '+91 91111 22222', commissionBp: 200 }).expect(201)).body
+      .data;
 
     const b1 = (await http.post('/bookings', bookingBody(inv, [0], { brokerId: broker.id }), key()).expect(201)).body.data;
     const b2 = (await http.post('/bookings', bookingBody(inv, [1], { brokerId: broker.id, mode: 'reserve' }), key()).expect(201)).body.data;
@@ -217,7 +275,9 @@ describe('broker commissions', () => {
     expect(detail.payableBalancePaise).toBe(40_000_00);
 
     const c1 = detail.commissions.find((c: { bookingId: { id: string } }) => c.bookingId.id === b1.id);
-    const payout = await http.post(`/brokers/${broker.id}/payouts`, { commissionIds: [c1.id], paidOn: '2026-06-01', mode: 'neft' }, key()).expect(201);
+    const payout = await http
+      .post(`/brokers/${broker.id}/payouts`, { commissionIds: [c1.id], paidOn: '2026-06-01', mode: 'neft' }, key())
+      .expect(201);
     expect(payout.body.data.totalPaise).toBe(20_000_00);
     await http.post(`/brokers/${broker.id}/payouts`, { commissionIds: [c1.id], paidOn: '2026-06-01', mode: 'neft' }, key()).expect(422);
 
@@ -270,7 +330,9 @@ describe('documents', () => {
     expect(Buffer.from(file.body).subarray(0, 5).toString()).toBe('%PDF-');
 
     // Tampered or expired links are refused.
-    await request(app).get(`${url.slice(0, -2)}xx`).expect(403);
+    await request(app)
+      .get(`${url.slice(0, -2)}xx`)
+      .expect(403);
 
     // Another company can neither list, link nor attach.
     const other = await registerCompany();
@@ -300,18 +362,32 @@ describe('project-restricted users on Phase 2 data', () => {
     const sales = roles.find((r) => r.systemKey === 'sales')!;
     // Give the sales role land.read for this test.
     const allPerms = (await http.get('/permissions').expect(200)).body.data.all as string[];
-    await http.patch(`/roles/${sales.id}`, { permissions: [...allPerms.filter((p) => p.startsWith('crm.') || p === 'land.read' || p === 'documents.read')] }).expect(200);
+    await http
+      .patch(`/roles/${sales.id}`, {
+        permissions: [...allPerms.filter((p) => p.startsWith('crm.') || p === 'land.read' || p === 'documents.read')],
+      })
+      .expect(200);
 
     const { testOutbox } = await import('../src/utils/mailer');
-    await http.post('/invitations', { email: 'scoped@example.com', roleId: sales.id, projectAccess: { mode: 'restricted', projectIds: [inv1.project.id] } }).expect(201);
+    await http
+      .post('/invitations', {
+        email: 'scoped@example.com',
+        roleId: sales.id,
+        projectAccess: { mode: 'restricted', projectIds: [inv1.project.id] },
+      })
+      .expect(201);
     const token = /token=([\w-]+)/.exec(testOutbox.filter((m) => m.to === 'scoped@example.com').at(-1)!.text)![1];
-    const accepted = await request(getApp()).post('/api/v1/auth/accept-invite').send({ token, name: 'Scoped User', password: 'Str0ngPassw0rd!' }).expect(201);
+    const accepted = await request(getApp())
+      .post('/api/v1/auth/accept-invite')
+      .send({ token, name: 'Scoped User', password: 'Str0ngPassw0rd!' })
+      .expect(201);
     const u = { token: accepted.body.data.accessToken as string };
     const scopedUserId = accepted.body.data.user.id as string;
 
     const base = { district: 'Bhopal', state: 'MP', areaX100: 100 };
     await http.post('/land', { ...base, khasraNumber: '1', village: 'A', projectId: inv1.project.id }).expect(201);
-    const hidden = (await http.post('/land', { ...base, khasraNumber: '2', village: 'B', projectId: inv2.project.id }).expect(201)).body.data;
+    const hidden = (await http.post('/land', { ...base, khasraNumber: '2', village: 'B', projectId: inv2.project.id }).expect(201)).body
+      .data;
     await http.post('/land', { ...base, khasraNumber: '3', village: 'C' }).expect(201); // company-level
     const land = (await api(u).get('/land').expect(200)).body.data as { khasraNumber: string }[];
     expect(land.map((l) => l.khasraNumber)).toEqual(['1']);
@@ -319,7 +395,9 @@ describe('project-restricted users on Phase 2 data', () => {
 
     await http.post('/leads', { name: 'P1 lead', phone: '+91 90000 00001', projectId: inv1.project.id }).expect(201);
     await http.post('/leads', { name: 'P2 lead', phone: '+91 90000 00002', projectId: inv2.project.id }).expect(201);
-    await http.post('/leads', { name: 'Assigned lead', phone: '+91 90000 00003', projectId: inv2.project.id, assignedTo: scopedUserId }).expect(201);
+    await http
+      .post('/leads', { name: 'Assigned lead', phone: '+91 90000 00003', projectId: inv2.project.id, assignedTo: scopedUserId })
+      .expect(201);
     const leads = ((await api(u).get('/leads').expect(200)).body.data as { name: string }[]).map((l) => l.name).sort();
     expect(leads).toEqual(['Assigned lead', 'P1 lead']);
   });

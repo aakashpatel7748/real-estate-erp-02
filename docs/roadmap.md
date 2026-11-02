@@ -14,7 +14,17 @@ Auth and sessions, tenancy and RBAC, projects and structure, plot inventory, int
 
 Note: uploads go through the API rather than presigned PUTs, so the server can verify the file signature before anything is stored. Revisit if very large files are needed.
 
-## Phase 3: enhancements
+## Phase 3: builder/developer menu (done)
+
+The application was reorganised into the five-section menu (Administration, Master, Pre Sales, Post Sales, Account) and every item is a working screen:
+
+- **Administration:** Phases/Towers overview with unit status; Bank & Cash Accounts (bank details, RERA flag, opening balances, live balances); Rate & Price Indexes that reprice only unsold units (with a dry run); Settings for quotation validity, demand-letter lead days, late interest and dues rules for registry/possession.
+- **Master:** land owners/partners/investors, home-loan lenders (with APF projects and loans per booking), registry & legal consultants, charge master (fixed / per sq ft / % of value, GST, mandatory), parking slots (bulk create, allot, release, auto-release on cancellation), unit types (plot, flat, villa, row house, shop, office, farm house) with tower and floor.
+- **Pre Sales:** sales dashboard; configurable lead sources, stage labels and lost reasons; WhatsApp templates with variables, rendered for a lead/customer/booking and logged; inbound lead webhooks with field mapping, de-duplication of repeat enquiries, delivery logs and token rotation; saved quotations (numbered, PDF, expiry, one-time conversion into a booking).
+- **Post Sales:** cancellations with refund status; agreements, sale-deed registry (marks units sold), possession and demand letters with PDFs and status history; dues aging with follow-up log and promises; allotment-letter tracking; booking-level home loans.
+- **Account:** PDC register (deposit → clear creates the receipt exactly once; bounce/return); vendor payments across vendors; ledger adjustments (credit notes reduce the latest unpaid installments, debit notes add a charge; both reversible and unwound on cancellation); GST vouchers with a period summary.
+
+## Next: enhancements
 
 - Saved quotations with validity and conversion to booking
 - Email, SMS and WhatsApp reminders (provider adapters) alongside in-app notifications

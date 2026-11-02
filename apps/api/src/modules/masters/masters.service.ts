@@ -67,7 +67,11 @@ export async function computeCharges(ctx: TenantContext, projectId: string, plot
     .lean();
   return charges.map((c) => {
     const base =
-      c.basis === 'fixed' ? c.value * Math.max(plots.length, 1) : c.basis === 'per_sqft' ? priceForArea(areaX100, c.value) : applyBasisPoints(valuePaise, c.value);
+      c.basis === 'fixed'
+        ? c.value * Math.max(plots.length, 1)
+        : c.basis === 'per_sqft'
+          ? priceForArea(areaX100, c.value)
+          : applyBasisPoints(valuePaise, c.value);
     const gstPaise = applyBasisPoints(base, c.gstBp ?? 0);
     return {
       id: String(c._id),
@@ -121,7 +125,10 @@ export async function applyRateIndex(ctx: TenantContext, id: string, dryRun: boo
       },
     })),
   );
-  await RateIndex.updateOne({ companyId: ctx.companyId, _id: idx._id }, { $push: { applications: { at: new Date(), by: ctx.userId, unitsRepriced: changes.length } } });
+  await RateIndex.updateOne(
+    { companyId: ctx.companyId, _id: idx._id },
+    { $push: { applications: { at: new Date(), by: ctx.userId, unitsRepriced: changes.length } } },
+  );
   await audit(ctx, {
     action: 'rate_index.apply',
     entityType: 'rate_index',
@@ -145,6 +152,7 @@ export async function listParking(
   const sort = parseSort(q.sort, ['code', 'type', 'status', 'pricePaise', 'createdAt'], { code: 1 });
   const [items, total, counts] = await Promise.all([
     ParkingSlot.find(filter)
+      .collation({ locale: 'en', numericOrdering: true })
       .sort(sort)
       .skip((q.page - 1) * q.pageSize)
       .limit(q.pageSize)
@@ -257,7 +265,12 @@ export async function allotParking(ctx: TenantContext, id: string, input: { book
     },
   );
   if (res.modifiedCount !== 1) throw conflict(`Slot ${slot.code} is not available`);
-  await audit(ctx, { action: 'parking.allot', entityType: 'parking', entityId: slot._id, summary: `${slot.code} → ${booking.bookingNumber}` });
+  await audit(ctx, {
+    action: 'parking.allot',
+    entityType: 'parking',
+    entityId: slot._id,
+    summary: `${slot.code} → ${booking.bookingNumber}`,
+  });
   return { id: String(slot._id), status: 'allotted' };
 }
 
@@ -293,7 +306,6 @@ export async function deleteParking(ctx: TenantContext, id: string) {
   await ParkingSlot.deleteOne({ companyId: ctx.companyId, _id: slot._id });
   await audit(ctx, { action: 'parking.delete', entityType: 'parking', entityId: slot._id, summary: slot.code });
 }
-
 
 // ---------------- Phases / towers ----------------
 

@@ -40,7 +40,10 @@ const landParcelSchema = withTenant(
     baseOptions,
   ),
 );
-landParcelSchema.index({ companyId: 1, district: 1, village: 1, khasraNumber: 1 }, { unique: true, partialFilterExpression: { deletedAt: null } });
+landParcelSchema.index(
+  { companyId: 1, district: 1, village: 1, khasraNumber: 1 },
+  { unique: true, partialFilterExpression: { deletedAt: null } },
+);
 landParcelSchema.index({ companyId: 1, projectId: 1, status: 1 });
 export type LandParcelDoc = InferSchemaType<typeof landParcelSchema>;
 export const LandParcel = model('LandParcel', landParcelSchema);

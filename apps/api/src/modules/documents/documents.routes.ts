@@ -29,7 +29,8 @@ documentsRouter.post(
   authorize('documents.upload'),
   (req, res, next) =>
     upload.single('file')(req, res, (err: unknown) => {
-      if ((err as { code?: string })?.code === 'LIMIT_FILE_SIZE') return next(new AppError(413, 'VALIDATION_ERROR', `Files may be at most ${env.MAX_UPLOAD_MB} MB`));
+      if ((err as { code?: string })?.code === 'LIMIT_FILE_SIZE')
+        return next(new AppError(413, 'VALIDATION_ERROR', `Files may be at most ${env.MAX_UPLOAD_MB} MB`));
       if (err) return next(new AppError(400, 'VALIDATION_ERROR', 'Upload a single file in the "file" field'));
       next();
     }),
@@ -43,7 +44,11 @@ documentsRouter.get(
   '/:id/url',
   authorize('documents.read'),
   validate({ params: idParam, query: z.object({ disposition: z.enum(['inline', 'attachment']).default('attachment') }) }),
-  async (req, res) => ok(res, await docs.documentUrl(getCtx(req), params<{ id: string }>(req).id, query<{ disposition: 'inline' | 'attachment' }>(req).disposition)),
+  async (req, res) =>
+    ok(
+      res,
+      await docs.documentUrl(getCtx(req), params<{ id: string }>(req).id, query<{ disposition: 'inline' | 'attachment' }>(req).disposition),
+    ),
 );
 
 documentsRouter.delete('/:id', authorize('documents.delete'), validate({ params: idParam }), async (req, res) => {

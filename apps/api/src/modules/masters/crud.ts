@@ -133,7 +133,12 @@ export function crudRouter(opts: CrudOptions): Router {
     const input = body<Record<string, unknown>>(req);
     const data = opts.prepare ? await opts.prepare(ctx, input) : input;
     const doc = await model.create({ ...data, companyId: ctx.companyId, createdBy: ctx.userId });
-    await audit(ctx, { action: `${opts.auditType}.create`, entityType: opts.auditType, entityId: doc._id, summary: String(doc.name ?? doc.code ?? '') });
+    await audit(ctx, {
+      action: `${opts.auditType}.create`,
+      entityType: opts.auditType,
+      entityId: doc._id,
+      summary: String(doc.name ?? doc.code ?? ''),
+    });
     created(res, doc.toJSON());
   });
 
@@ -152,7 +157,8 @@ export function crudRouter(opts: CrudOptions): Router {
     const ctx = getCtx(req);
     const doc = await load(ctx, params<{ id: string }>(req).id);
     await opts.beforeDelete?.(ctx, doc.toObject() as Doc);
-    if ('deletedAt' in model.schema.paths) await model.updateOne({ companyId: ctx.companyId, _id: doc._id }, { $set: { deletedAt: new Date() } });
+    if ('deletedAt' in model.schema.paths)
+      await model.updateOne({ companyId: ctx.companyId, _id: doc._id }, { $set: { deletedAt: new Date() } });
     else await model.deleteOne({ companyId: ctx.companyId, _id: doc._id });
     await audit(ctx, { action: `${opts.auditType}.delete`, entityType: opts.auditType, entityId: doc._id });
     ok(res, { deleted: true });

@@ -36,7 +36,9 @@ crmRouter.post('/', authorize('crm.create'), validate({ body: leadSchema }), asy
   if (input.assignedTo && input.assignedTo !== String(ctx.userId) && !ctx.permissions.has('crm.assign')) delete input.assignedTo;
   created(res, await crm.createLead(ctx, input));
 });
-crmRouter.get('/:id', authorize('crm.read'), validate({ params: idParam }), async (req, res) => ok(res, await crm.getLead(getCtx(req), params<Id>(req).id)));
+crmRouter.get('/:id', authorize('crm.read'), validate({ params: idParam }), async (req, res) =>
+  ok(res, await crm.getLead(getCtx(req), params<Id>(req).id)),
+);
 crmRouter.patch('/:id', authorize('crm.update'), validate({ params: idParam, body: leadUpdateSchema }), async (req, res) =>
   ok(res, await crm.updateLead(getCtx(req), params<Id>(req).id, body<Partial<LeadInput>>(req))),
 );

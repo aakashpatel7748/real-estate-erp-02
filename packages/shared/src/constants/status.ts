@@ -98,7 +98,19 @@ export const LEAD_STATUSES = ['new', 'contacted', 'site_visit', 'negotiation', '
 export type LeadStatus = (typeof LEAD_STATUSES)[number];
 export const OPEN_LEAD_STATUSES: LeadStatus[] = ['new', 'contacted', 'site_visit', 'negotiation'];
 /** Built-in lead sources. Companies can rename, hide or add sources in Lead Stages & Sources. */
-export const LEAD_SOURCES = ['walk_in', 'website', 'facebook', 'google', '99acres', 'magicbricks', 'housing', 'broker', 'referral', 'hoarding', 'other'] as const;
+export const LEAD_SOURCES = [
+  'walk_in',
+  'website',
+  'facebook',
+  'google',
+  '99acres',
+  'magicbricks',
+  'housing',
+  'broker',
+  'referral',
+  'hoarding',
+  'other',
+] as const;
 export const DEFAULT_LEAD_SOURCE_LABELS: Record<string, string> = {
   walk_in: 'Walk-in',
   website: 'Website',
@@ -120,7 +132,14 @@ export const DEFAULT_LEAD_STAGE_LABELS: Record<string, string> = {
   won: 'Won',
   lost: 'Lost',
 };
-export const DEFAULT_LOST_REASONS = ['Budget mismatch', 'Location not suitable', 'Bought elsewhere', 'Not reachable', 'Not interested', 'Duplicate enquiry'];
+export const DEFAULT_LOST_REASONS = [
+  'Budget mismatch',
+  'Location not suitable',
+  'Bought elsewhere',
+  'Not reachable',
+  'Not interested',
+  'Duplicate enquiry',
+];
 export const LEAD_ACTIVITY_TYPES = ['call', 'whatsapp', 'email', 'meeting', 'site_visit', 'note', 'status_change'] as const;
 export const LAND_STATUSES = ['negotiation', 'agreement', 'registered', 'converted', 'dropped'] as const;
 export type LandStatus = (typeof LAND_STATUSES)[number];
@@ -145,9 +164,31 @@ export const WORK_ORDER_TRANSITIONS: Record<WorkOrderStatus, WorkOrderStatus[]> 
 export const VENDOR_CATEGORIES = ['civil', 'electrical', 'plumbing', 'road', 'landscaping', 'material', 'consultant', 'other'] as const;
 export const COMMISSION_STATUSES = ['accrued', 'paid', 'cancelled'] as const;
 export const EXPENSE_SETTLEMENTS = ['paid', 'payable'] as const;
-export const DOCUMENT_ENTITY_TYPES = ['project', 'land_parcel', 'plot', 'customer', 'booking', 'payment', 'vendor', 'work_order', 'lead', 'company'] as const;
+export const DOCUMENT_ENTITY_TYPES = [
+  'project',
+  'land_parcel',
+  'plot',
+  'customer',
+  'booking',
+  'payment',
+  'vendor',
+  'work_order',
+  'lead',
+  'company',
+] as const;
 export type DocumentEntityType = (typeof DOCUMENT_ENTITY_TYPES)[number];
-export const DOCUMENT_CATEGORIES = ['general', 'agreement', 'registry', 'kyc', 'layout_plan', 'approval', 'invoice', 'receipt', 'photo', 'other'] as const;
+export const DOCUMENT_CATEGORIES = [
+  'general',
+  'agreement',
+  'registry',
+  'kyc',
+  'layout_plan',
+  'approval',
+  'invoice',
+  'receipt',
+  'photo',
+  'other',
+] as const;
 /** File types accepted for upload; the server also verifies file signatures (magic bytes). */
 export const ALLOWED_UPLOAD_TYPES: Record<string, string> = {
   'application/pdf': 'pdf',
@@ -171,9 +212,29 @@ export type ChargeBasis = (typeof CHARGE_BASES)[number];
 export const CASH_BANK_KINDS = ['bank', 'cash'] as const;
 
 // ---------- Pre sales ----------
-export const WHATSAPP_TEMPLATE_CATEGORIES = ['lead_followup', 'site_visit', 'quotation', 'booking', 'payment_reminder', 'demand', 'possession', 'general'] as const;
+export const WHATSAPP_TEMPLATE_CATEGORIES = [
+  'lead_followup',
+  'site_visit',
+  'quotation',
+  'booking',
+  'payment_reminder',
+  'demand',
+  'possession',
+  'general',
+] as const;
 /** Placeholders a WhatsApp template may use; filled from the lead, customer or booking it is sent for. */
-export const WHATSAPP_VARIABLES = ['name', 'phone', 'project', 'company', 'executive', 'booking_no', 'units', 'amount_due', 'due_date', 'total_amount'] as const;
+export const WHATSAPP_VARIABLES = [
+  'name',
+  'phone',
+  'project',
+  'company',
+  'executive',
+  'booking_no',
+  'units',
+  'amount_due',
+  'due_date',
+  'total_amount',
+] as const;
 export const PORTALS = ['99acres', 'magicbricks', 'housing', 'facebook', 'google', 'website', 'other'] as const;
 export const QUOTATION_STATUSES = ['draft', 'sent', 'accepted', 'converted', 'expired', 'cancelled'] as const;
 

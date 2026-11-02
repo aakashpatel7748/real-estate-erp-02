@@ -73,9 +73,20 @@ export function SalesDashboardPage() {
         }
       />
       <div className="mb-6 grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
-        <StatCard label="New enquiries" value={k.leads} hint={`${k.won} won · ${(k.conversionBp / 100).toFixed(1)}% conversion`} icon={Target} />
+        <StatCard
+          label="New enquiries"
+          value={k.leads}
+          hint={`${k.won} won · ${(k.conversionBp / 100).toFixed(1)}% conversion`}
+          icon={Target}
+        />
         <StatCard label="Site visits" value={k.siteVisits} icon={Footprints} />
-        <StatCard label="Bookings" value={k.bookings} hint={`${formatINRCompact(k.bookingValuePaise)}${k.cancellations ? ` · ${k.cancellations} cancelled` : ''}`} icon={IndianRupee} tone="success" />
+        <StatCard
+          label="Bookings"
+          value={k.bookings}
+          hint={`${formatINRCompact(k.bookingValuePaise)}${k.cancellations ? ` · ${k.cancellations} cancelled` : ''}`}
+          icon={IndianRupee}
+          tone="success"
+        />
         <StatCard
           label="Follow-ups due"
           value={k.followUpsOverdue + k.followUpsToday}
@@ -130,7 +141,8 @@ export function SalesDashboardPage() {
               </Link>
             ))}
             <div className="border-t pt-3 text-sm text-muted-foreground">
-              <FileText className="mr-1 inline size-4" /> {k.quotations} quotations ({formatINRCompact(k.quotationValuePaise)}) · {k.quotationsConverted} converted
+              <FileText className="mr-1 inline size-4" /> {k.quotations} {k.quotations === 1 ? 'quotation' : 'quotations'} (
+              {formatINRCompact(k.quotationValuePaise)}) · {k.quotationsConverted} converted
             </div>
           </CardContent>
         </Card>

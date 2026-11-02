@@ -73,10 +73,17 @@ async function bookingVars(ctx: TenantContext, bookingId: Types.ObjectId) {
 }
 
 /** Fills a template for a lead, customer or booking and returns a click-to-chat link (wa.me). */
-export async function renderWhatsapp(ctx: TenantContext, templateId: string, input: { entityType: 'lead' | 'customer' | 'booking'; entityId: string; log: boolean }) {
+export async function renderWhatsapp(
+  ctx: TenantContext,
+  templateId: string,
+  input: { entityType: 'lead' | 'customer' | 'booking'; entityId: string; log: boolean },
+) {
   const tpl = await WhatsappTemplate.findOne({ companyId: ctx.companyId, deletedAt: null, _id: toObjectId(templateId) }).lean();
   if (!tpl) throw notFound('Template');
-  const [company, me] = await Promise.all([Company.findById(ctx.companyId).select('name').lean(), User.findById(ctx.userId).select('name').lean()]);
+  const [company, me] = await Promise.all([
+    Company.findById(ctx.companyId).select('name').lean(),
+    User.findById(ctx.userId).select('name').lean(),
+  ]);
   const vars: Record<string, string> = { company: company?.name ?? '', executive: me?.name ?? '' };
   let phone = '';
   let leadId: Types.ObjectId | undefined;
@@ -85,7 +92,9 @@ export async function renderWhatsapp(ctx: TenantContext, templateId: string, inp
 
   if (input.entityType === 'lead') {
     if (!hasPermission(ctx, 'crm.read')) throw forbidden();
-    const lead = await Lead.findOne({ ...leadVisibility(ctx), _id: id }).populate({ path: 'projectId', select: 'name', match: { companyId: ctx.companyId } }).lean();
+    const lead = await Lead.findOne({ ...leadVisibility(ctx), _id: id })
+      .populate({ path: 'projectId', select: 'name', match: { companyId: ctx.companyId } })
+      .lean();
     if (!lead) throw notFound('Lead');
     Object.assign(vars, { name: lead.name, phone: lead.phone, project: (lead.projectId as unknown as { name?: string })?.name ?? '' });
     phone = lead.phone;
@@ -111,7 +120,14 @@ export async function renderWhatsapp(ctx: TenantContext, templateId: string, inp
   const url = `https://wa.me/${waNumber(phone)}?text=${encodeURIComponent(text)}`;
   if (input.log) {
     if (leadId) {
-      await LeadActivity.create({ companyId: ctx.companyId, leadId, type: 'whatsapp', summary: `WhatsApp sent: ${tpl.name}`, actorId: ctx.userId, completedAt: new Date() });
+      await LeadActivity.create({
+        companyId: ctx.companyId,
+        leadId,
+        type: 'whatsapp',
+        summary: `WhatsApp sent: ${tpl.name}`,
+        actorId: ctx.userId,
+        completedAt: new Date(),
+      });
       await Lead.updateOne({ companyId: ctx.companyId, _id: leadId }, { $set: { lastActivityAt: new Date() } });
     } else if (booking) {
       await CollectionFollowUp.create({
@@ -136,7 +152,18 @@ export async function renderWhatsapp(ctx: TenantContext, templateId: string, inp
 export const newToken = () => randomBytes(24).toString('base64url');
 
 const FIELD_ALIASES = {
-  name: ['name', 'full_name', 'fullname', 'contact_name', 'customer_name', 'sender_name', 'lead_name', 'first_name', 'buyer_name', 'username'],
+  name: [
+    'name',
+    'full_name',
+    'fullname',
+    'contact_name',
+    'customer_name',
+    'sender_name',
+    'lead_name',
+    'first_name',
+    'buyer_name',
+    'username',
+  ],
   phone: ['phone', 'mobile', 'mobile_number', 'phone_number', 'contact_number', 'contact', 'sender_mobile', 'mobileno', 'cell', 'whatsapp'],
   email: ['email', 'email_id', 'emailid', 'sender_email', 'mail'],
   message: ['message', 'query', 'comments', 'comment', 'remarks', 'requirement', 'enquiry', 'enquiry_message', 'description', 'notes'],
@@ -173,7 +200,14 @@ export function mapInboundPayload(payload: unknown) {
   if (name && flat.last_name && !flat.full_name && name === flat.first_name) name = `${name} ${flat.last_name}`.trim();
   const rawPhone = pick(FIELD_ALIASES.phone);
   const phone = rawPhone?.replace(/[^\d+]/g, '');
-  return { name, phone, email: pick(FIELD_ALIASES.email), message: pick(FIELD_ALIASES.message), project: pick(FIELD_ALIASES.project), budget: pick(FIELD_ALIASES.budget) };
+  return {
+    name,
+    phone,
+    email: pick(FIELD_ALIASES.email),
+    message: pick(FIELD_ALIASES.message),
+    project: pick(FIELD_ALIASES.project),
+    budget: pick(FIELD_ALIASES.budget),
+  };
 }
 
 /**
@@ -187,7 +221,16 @@ export async function receiveInboundLead(token: string, payload: unknown, ip?: s
   const mapped = mapInboundPayload(payload);
   const raw = JSON.stringify(payload ?? {}).slice(0, 4000);
   const log = (outcome: 'created' | 'duplicate' | 'rejected', extra: Record<string, unknown> = {}) =>
-    InboundLog.create({ companyId, integrationId: integration._id, outcome, name: mapped.name, phone: mapped.phone, payload: raw, ip, ...extra });
+    InboundLog.create({
+      companyId,
+      integrationId: integration._id,
+      outcome,
+      name: mapped.name,
+      phone: mapped.phone,
+      payload: raw,
+      ip,
+      ...extra,
+    });
 
   if (!mapped.phone || mapped.phone.replace(/\D/g, '').length < 7) {
     await log('rejected', { error: 'No phone number found in the payload' });
@@ -197,14 +240,32 @@ export async function receiveInboundLead(token: string, payload: unknown, ip?: s
   const settings = await getLeadSettings(companyId);
   const source = settings.sources.some((s) => s.key === integration.portal) ? integration.portal : 'other';
   const actorId = integration.createdBy ?? integration.defaultAssigneeId;
-  const summary = [`Enquiry via ${integration.name}`, mapped.project && `for ${mapped.project}`, mapped.message && `– ${mapped.message}`].filter(Boolean).join(' ').slice(0, 1000);
+  const summary = [`Enquiry via ${integration.name}`, mapped.project && `for ${mapped.project}`, mapped.message && `– ${mapped.message}`]
+    .filter(Boolean)
+    .join(' ')
+    .slice(0, 1000);
 
   const digits = mapped.phone.replace(/\D/g, '').slice(-10);
-  const existing = await Lead.findOne({ companyId, deletedAt: null, status: { $in: OPEN_LEAD_STATUSES }, phone: new RegExp(`${digits}$`) }).lean();
+  const existing = await Lead.findOne({
+    companyId,
+    deletedAt: null,
+    status: { $in: OPEN_LEAD_STATUSES },
+    phone: new RegExp(`${digits}$`),
+  }).lean();
   if (existing) {
-    await LeadActivity.create({ companyId, leadId: existing._id, type: 'note', summary: `Repeat enquiry: ${summary}`, actorId, completedAt: new Date() });
+    await LeadActivity.create({
+      companyId,
+      leadId: existing._id,
+      type: 'note',
+      summary: `Repeat enquiry: ${summary}`,
+      actorId,
+      completedAt: new Date(),
+    });
     await Lead.updateOne({ companyId, _id: existing._id }, { $set: { lastActivityAt: new Date() } });
-    await PortalIntegration.updateOne({ companyId, _id: integration._id }, { $inc: { duplicates: 1 }, $set: { lastReceivedAt: new Date() } });
+    await PortalIntegration.updateOne(
+      { companyId, _id: integration._id },
+      { $inc: { duplicates: 1 }, $set: { lastReceivedAt: new Date() } },
+    );
     await log('duplicate', { leadId: existing._id });
     return { status: 200 as const, leadId: String(existing._id), duplicate: true };
   }
@@ -224,7 +285,10 @@ export async function receiveInboundLead(token: string, payload: unknown, ip?: s
     createdBy: actorId,
   });
   await LeadActivity.create({ companyId, leadId: lead._id, type: 'note', summary, actorId, completedAt: new Date() });
-  await PortalIntegration.updateOne({ companyId, _id: integration._id }, { $inc: { leadsReceived: 1 }, $set: { lastReceivedAt: new Date() } });
+  await PortalIntegration.updateOne(
+    { companyId, _id: integration._id },
+    { $inc: { leadsReceived: 1 }, $set: { lastReceivedAt: new Date() } },
+  );
   if (integration.defaultAssigneeId) {
     await Notification.create({
       companyId,
@@ -313,11 +377,24 @@ export async function createQuotation(ctx: TenantContext, input: QuotationInput)
     );
     if (input.leadId) {
       await LeadActivity.create(
-        [{ companyId: ctx.companyId, leadId: toObjectId(input.leadId), type: 'note', summary: `Quotation ${number} for ${formatINR(priced.netAmountPaise)}`, actorId: ctx.userId, completedAt: new Date() }],
+        [
+          {
+            companyId: ctx.companyId,
+            leadId: toObjectId(input.leadId),
+            type: 'note',
+            summary: `Quotation ${number} for ${formatINR(priced.netAmountPaise)}`,
+            actorId: ctx.userId,
+            completedAt: new Date(),
+          },
+        ],
         { session },
       );
     }
-    await audit(ctx, { action: 'quotations.create', entityType: 'quotation', entityId: q!._id, summary: `${number} ${formatINR(priced.netAmountPaise)}` }, session);
+    await audit(
+      ctx,
+      { action: 'quotations.create', entityType: 'quotation', entityId: q!._id, summary: `${number} ${formatINR(priced.netAmountPaise)}` },
+      session,
+    );
     return q!.toJSON();
   });
 }
@@ -338,12 +415,22 @@ function withExpiry<T extends { status: string; validUntil: Date }>(q: T): T {
 
 export async function listQuotations(
   ctx: TenantContext,
-  q: { page: number; pageSize: number; sort?: string; q?: string; projectId?: string; status?: string; leadId?: string; customerId?: string },
+  q: {
+    page: number;
+    pageSize: number;
+    sort?: string;
+    q?: string;
+    projectId?: string;
+    status?: string;
+    leadId?: string;
+    customerId?: string;
+  },
 ) {
   const filter = scopedFilter(ctx, q.projectId);
   const today = parseISODate(todayInIndia());
   if (q.status === 'expired') Object.assign(filter, { status: { $in: ['draft', 'sent', 'accepted'] }, validUntil: { $lt: today } });
-  else if (q.status && ['draft', 'sent', 'accepted'].includes(q.status)) Object.assign(filter, { status: q.status, validUntil: { $gte: today } });
+  else if (q.status && ['draft', 'sent', 'accepted'].includes(q.status))
+    Object.assign(filter, { status: q.status, validUntil: { $gte: today } });
   else if (q.status) filter.status = q.status;
   if (q.leadId) filter.leadId = toObjectId(q.leadId);
   if (q.customerId) filter.customerId = toObjectId(q.customerId);
@@ -373,7 +460,11 @@ export async function getQuotation(ctx: TenantContext, id: string) {
   return withExpiry(q);
 }
 
-const QUOTE_TRANSITIONS: Record<string, string[]> = { draft: ['sent', 'accepted', 'cancelled'], sent: ['accepted', 'cancelled'], accepted: ['cancelled'] };
+const QUOTE_TRANSITIONS: Record<string, string[]> = {
+  draft: ['sent', 'accepted', 'cancelled'],
+  sent: ['accepted', 'cancelled'],
+  accepted: ['cancelled'],
+};
 
 export async function setQuotationStatus(ctx: TenantContext, id: string, status: string) {
   const q = await getQuotation(ctx, id);
@@ -399,7 +490,14 @@ export async function quotationPdf(ctx: TenantContext, id: string, res: Response
     leadId?: { name: string; phone: string };
     customerId?: { name: string; phone: string };
     projectId?: { name: string; reraNumber?: string };
-    items: { plotNumber: string; blockCode?: string; areaX100: number; ratePaisePerSqft: number; plcPaise: number; lineTotalPaise: number }[];
+    items: {
+      plotNumber: string;
+      blockCode?: string;
+      areaX100: number;
+      ratePaisePerSqft: number;
+      plcPaise: number;
+      lineTotalPaise: number;
+    }[];
     grossAmountPaise: number;
     discountPaise: number;
     charges: { name: string; amountPaise: number }[];
@@ -413,7 +511,10 @@ export async function quotationPdf(ctx: TenantContext, id: string, res: Response
   res.setHeader('Cache-Control', 'private, no-store');
   const doc = new PDFDocument({ size: 'A4', margin: 50 });
   doc.pipe(res);
-  doc.fontSize(16).font('Helvetica-Bold').text(company?.legalName || company?.name || '');
+  doc
+    .fontSize(16)
+    .font('Helvetica-Bold')
+    .text(company?.legalName || company?.name || '');
   doc.fontSize(9).font('Helvetica').fillColor('#555');
   const addr = [company?.address?.line1, company?.address?.city, company?.address?.state].filter(Boolean).join(', ');
   if (addr) doc.text(addr);
@@ -429,7 +530,10 @@ export async function quotationPdf(ctx: TenantContext, id: string, res: Response
   row('Quotation No.', q.number);
   row('Date', formatDate(toISODate(q.quoteDate)));
   row('Valid until', formatDate(toISODate(q.validUntil)));
-  row('Prepared for', `${prospect?.name ?? q.prospectName ?? ''}${(prospect?.phone ?? q.prospectPhone) ? ` (${prospect?.phone ?? q.prospectPhone})` : ''}`);
+  row(
+    'Prepared for',
+    `${prospect?.name ?? q.prospectName ?? ''}${(prospect?.phone ?? q.prospectPhone) ? ` (${prospect?.phone ?? q.prospectPhone})` : ''}`,
+  );
   row('Project', `${q.projectId?.name ?? ''}${q.projectId?.reraNumber ? ` – RERA ${q.projectId.reraNumber}` : ''}`);
   doc.moveDown(0.4).font('Helvetica-Bold').text('Unit pricing').font('Helvetica').moveDown(0.3);
   for (const i of q.items) {
@@ -450,7 +554,10 @@ export async function quotationPdf(ctx: TenantContext, id: string, res: Response
     .moveDown(1.5)
     .fontSize(8)
     .fillColor('#666')
-    .text('Prices are subject to availability at the time of booking. Government taxes, stamp duty and registration charges extra unless stated.', { align: 'center' });
+    .text(
+      'Prices are subject to availability at the time of booking. Government taxes, stamp duty and registration charges extra unless stated.',
+      { align: 'center' },
+    );
   doc.end();
 }
 
@@ -474,81 +581,124 @@ export async function salesDashboard(ctx: TenantContext, q: { projectId?: string
   const twelveWeeksAgo = new Date(toEnd.getTime() - 12 * 7 * 86_400_000);
   const endOfToday = new Date(parseISODate(today).getTime() + 86_400_000);
 
-  const [bySource, byStatus, pipeline, followUps, trendLeads, trendBookings, bookings, quotes, visits, execLeads, execBookings, settings] = await Promise.all([
-    Lead.aggregate<{ _id: string; n: number; won: number }>([
-      { $match: { ...leadBase, ...inPeriod } },
-      { $group: { _id: '$source', n: { $sum: 1 }, won: { $sum: { $cond: [{ $eq: ['$status', 'won'] }, 1, 0] } } } },
-      { $sort: { n: -1 } },
-    ]),
-    Lead.aggregate<{ _id: string; n: number }>([{ $match: { ...leadBase, ...inPeriod } }, { $group: { _id: '$status', n: { $sum: 1 } } }]),
-    Lead.aggregate<{ _id: string; n: number }>([{ $match: { ...leadBase, status: { $in: OPEN_LEAD_STATUSES } } }, { $group: { _id: '$status', n: { $sum: 1 } } }]),
-    Lead.aggregate<{ overdue: number; today: number }>([
-      { $match: { ...leadBase, status: { $in: OPEN_LEAD_STATUSES }, nextFollowUpAt: { $lt: endOfToday } } },
-      {
-        $group: {
-          _id: null,
-          overdue: { $sum: { $cond: [{ $lt: ['$nextFollowUpAt', parseISODate(today)] }, 1, 0] } },
-          today: { $sum: { $cond: [{ $gte: ['$nextFollowUpAt', parseISODate(today)] }, 1, 0] } },
+  const [bySource, byStatus, pipeline, followUps, trendLeads, trendBookings, bookings, quotes, visits, execLeads, execBookings, settings] =
+    await Promise.all([
+      Lead.aggregate<{ _id: string; n: number; won: number }>([
+        { $match: { ...leadBase, ...inPeriod } },
+        { $group: { _id: '$source', n: { $sum: 1 }, won: { $sum: { $cond: [{ $eq: ['$status', 'won'] }, 1, 0] } } } },
+        { $sort: { n: -1 } },
+      ]),
+      Lead.aggregate<{ _id: string; n: number }>([
+        { $match: { ...leadBase, ...inPeriod } },
+        { $group: { _id: '$status', n: { $sum: 1 } } },
+      ]),
+      Lead.aggregate<{ _id: string; n: number }>([
+        { $match: { ...leadBase, status: { $in: OPEN_LEAD_STATUSES } } },
+        { $group: { _id: '$status', n: { $sum: 1 } } },
+      ]),
+      Lead.aggregate<{ overdue: number; today: number }>([
+        { $match: { ...leadBase, status: { $in: OPEN_LEAD_STATUSES }, nextFollowUpAt: { $lt: endOfToday } } },
+        {
+          $group: {
+            _id: null,
+            overdue: { $sum: { $cond: [{ $lt: ['$nextFollowUpAt', parseISODate(today)] }, 1, 0] } },
+            today: { $sum: { $cond: [{ $gte: ['$nextFollowUpAt', parseISODate(today)] }, 1, 0] } },
+          },
         },
-      },
-    ]),
-    Lead.aggregate<{ _id: string; n: number }>([
-      { $match: { ...leadBase, createdAt: { $gte: twelveWeeksAgo, $lt: toEnd } } },
-      { $group: { _id: { $dateToString: { format: '%G-W%V', date: '$createdAt', timezone: 'Asia/Kolkata' } }, n: { $sum: 1 } } },
-    ]),
-    Booking.aggregate<{ _id: string; n: number; value: number }>([
-      { $match: { ...bookingBase, bookingDate: { $gte: twelveWeeksAgo, $lt: toEnd }, status: { $in: ['reserved', 'booked'] } } },
-      { $group: { _id: { $dateToString: { format: '%G-W%V', date: '$bookingDate' } }, n: { $sum: 1 }, value: { $sum: '$netAmountPaise' } } },
-    ]),
-    Booking.aggregate<{ n: number; value: number; cancelled: number }>([
-      { $match: { ...bookingBase, bookingDate: { $gte: fromD, $lt: toEnd } } },
-      {
-        $group: {
-          _id: null,
-          n: { $sum: { $cond: [{ $in: ['$status', ['reserved', 'booked']] }, 1, 0] } },
-          value: { $sum: { $cond: [{ $in: ['$status', ['reserved', 'booked']] }, '$netAmountPaise', 0] } },
-          cancelled: { $sum: { $cond: [{ $eq: ['$status', 'cancelled'] }, 1, 0] } },
+      ]),
+      Lead.aggregate<{ _id: string; n: number }>([
+        { $match: { ...leadBase, createdAt: { $gte: twelveWeeksAgo, $lt: toEnd } } },
+        { $group: { _id: { $dateToString: { format: '%G-W%V', date: '$createdAt', timezone: 'Asia/Kolkata' } }, n: { $sum: 1 } } },
+      ]),
+      Booking.aggregate<{ _id: string; n: number; value: number }>([
+        { $match: { ...bookingBase, bookingDate: { $gte: twelveWeeksAgo, $lt: toEnd }, status: { $in: ['reserved', 'booked'] } } },
+        {
+          $group: {
+            _id: { $dateToString: { format: '%G-W%V', date: '$bookingDate' } },
+            n: { $sum: 1 },
+            value: { $sum: '$netAmountPaise' },
+          },
         },
-      },
-    ]),
-    Quotation.aggregate<{ n: number; value: number; converted: number }>([
-      { $match: { ...bookingBase, quoteDate: { $gte: fromD, $lt: toEnd } } },
-      { $group: { _id: null, n: { $sum: 1 }, value: { $sum: '$netAmountPaise' }, converted: { $sum: { $cond: [{ $eq: ['$status', 'converted'] }, 1, 0] } } } },
-    ]),
-    LeadActivity.countDocuments({ companyId: ctx.companyId, type: 'site_visit', createdAt: { $gte: fromD, $lt: toEnd } }),
-    Lead.aggregate<{ _id: Types.ObjectId | null; open: number; won: number; total: number }>([
-      { $match: { ...leadBase, ...inPeriod } },
-      {
-        $group: {
-          _id: '$assignedTo',
-          total: { $sum: 1 },
-          open: { $sum: { $cond: [{ $in: ['$status', OPEN_LEAD_STATUSES] }, 1, 0] } },
-          won: { $sum: { $cond: [{ $eq: ['$status', 'won'] }, 1, 0] } },
+      ]),
+      Booking.aggregate<{ n: number; value: number; cancelled: number }>([
+        { $match: { ...bookingBase, bookingDate: { $gte: fromD, $lt: toEnd } } },
+        {
+          $group: {
+            _id: null,
+            n: { $sum: { $cond: [{ $in: ['$status', ['reserved', 'booked']] }, 1, 0] } },
+            value: { $sum: { $cond: [{ $in: ['$status', ['reserved', 'booked']] }, '$netAmountPaise', 0] } },
+            cancelled: { $sum: { $cond: [{ $eq: ['$status', 'cancelled'] }, 1, 0] } },
+          },
         },
-      },
-    ]),
-    Booking.aggregate<{ _id: Types.ObjectId; n: number; value: number }>([
-      { $match: { ...bookingBase, bookingDate: { $gte: fromD, $lt: toEnd }, status: { $in: ['reserved', 'booked'] } } },
-      { $group: { _id: '$createdBy', n: { $sum: 1 }, value: { $sum: '$netAmountPaise' } } },
-    ]),
-    getLeadSettings(ctx.companyId),
-  ]);
+      ]),
+      Quotation.aggregate<{ n: number; value: number; converted: number }>([
+        { $match: { ...bookingBase, quoteDate: { $gte: fromD, $lt: toEnd } } },
+        {
+          $group: {
+            _id: null,
+            n: { $sum: 1 },
+            value: { $sum: '$netAmountPaise' },
+            converted: { $sum: { $cond: [{ $eq: ['$status', 'converted'] }, 1, 0] } },
+          },
+        },
+      ]),
+      LeadActivity.countDocuments({ companyId: ctx.companyId, type: 'site_visit', createdAt: { $gte: fromD, $lt: toEnd } }),
+      Lead.aggregate<{ _id: Types.ObjectId | null; open: number; won: number; total: number }>([
+        { $match: { ...leadBase, ...inPeriod } },
+        {
+          $group: {
+            _id: '$assignedTo',
+            total: { $sum: 1 },
+            open: { $sum: { $cond: [{ $in: ['$status', OPEN_LEAD_STATUSES] }, 1, 0] } },
+            won: { $sum: { $cond: [{ $eq: ['$status', 'won'] }, 1, 0] } },
+          },
+        },
+      ]),
+      Booking.aggregate<{ _id: Types.ObjectId; n: number; value: number }>([
+        { $match: { ...bookingBase, bookingDate: { $gte: fromD, $lt: toEnd }, status: { $in: ['reserved', 'booked'] } } },
+        { $group: { _id: '$createdBy', n: { $sum: 1 }, value: { $sum: '$netAmountPaise' } } },
+      ]),
+      getLeadSettings(ctx.companyId),
+    ]);
 
   const userIds = [...new Set([...execLeads.map((e) => e._id), ...execBookings.map((e) => e._id)].filter(Boolean).map(String))];
   const [users, members] = await Promise.all([
-    User.find({ _id: { $in: userIds.map((i) => new Types.ObjectId(i)) } }).select('name').lean(),
-    Membership.find({ companyId: ctx.companyId, userId: { $in: userIds.map((i) => new Types.ObjectId(i)) } }).select('userId').lean(),
+    User.find({ _id: { $in: userIds.map((i) => new Types.ObjectId(i)) } })
+      .select('name')
+      .lean(),
+    Membership.find({ companyId: ctx.companyId, userId: { $in: userIds.map((i) => new Types.ObjectId(i)) } })
+      .select('userId')
+      .lean(),
   ]);
   const memberSet = new Set(members.map((m) => String(m.userId)));
   const names = new Map(users.filter((u) => memberSet.has(String(u._id))).map((u) => [String(u._id), u.name]));
-  const execMap = new Map<string, { userId: string | null; name: string; leads: number; open: number; won: number; bookings: number; valuePaise: number }>();
+  const execMap = new Map<
+    string,
+    { userId: string | null; name: string; leads: number; open: number; won: number; bookings: number; valuePaise: number }
+  >();
   for (const e of execLeads) {
     const key = e._id ? String(e._id) : 'unassigned';
-    execMap.set(key, { userId: e._id ? String(e._id) : null, name: e._id ? (names.get(String(e._id)) ?? 'Former user') : 'Unassigned', leads: e.total, open: e.open, won: e.won, bookings: 0, valuePaise: 0 });
+    execMap.set(key, {
+      userId: e._id ? String(e._id) : null,
+      name: e._id ? (names.get(String(e._id)) ?? 'Former user') : 'Unassigned',
+      leads: e.total,
+      open: e.open,
+      won: e.won,
+      bookings: 0,
+      valuePaise: 0,
+    });
   }
   for (const b of execBookings) {
     const key = String(b._id);
-    const row = execMap.get(key) ?? { userId: key, name: names.get(key) ?? 'Former user', leads: 0, open: 0, won: 0, bookings: 0, valuePaise: 0 };
+    const row = execMap.get(key) ?? {
+      userId: key,
+      name: names.get(key) ?? 'Former user',
+      leads: 0,
+      open: 0,
+      won: 0,
+      bookings: 0,
+      valuePaise: 0,
+    };
     row.bookings = b.n;
     row.valuePaise = b.value;
     execMap.set(key, row);
@@ -584,7 +734,11 @@ export async function salesDashboard(ctx: TenantContext, q: { projectId?: string
     },
     bySource: bySource.map((s) => ({ source: s._id, label: label(s._id), leads: s.n, won: s.won })),
     byStatus: byStatus.map((s) => ({ status: s._id, label: settings.stageLabels[s._id] ?? s._id, leads: s.n })),
-    pipeline: OPEN_LEAD_STATUSES.map((s) => ({ status: s, label: settings.stageLabels[s] ?? s, leads: pipeline.find((p) => p._id === s)?.n ?? 0 })),
+    pipeline: OPEN_LEAD_STATUSES.map((s) => ({
+      status: s,
+      label: settings.stageLabels[s] ?? s,
+      leads: pipeline.find((p) => p._id === s)?.n ?? 0,
+    })),
     trend: [...weeks.values()].sort((a, b) => a.week.localeCompare(b.week)),
     executives: [...execMap.values()].sort((a, b) => b.valuePaise - a.valuePaise || b.won - a.won),
   };

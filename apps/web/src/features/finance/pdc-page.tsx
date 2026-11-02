@@ -61,7 +61,10 @@ export function PdcPage() {
   const due = lp.filter('due');
   const query = { ...lp.query, status, due, projectId: projectId ?? undefined };
   const q = useQuery({ queryKey: ['pdcs', query], queryFn: () => api.page<Pdc>('/pdcs', query) });
-  const summary = useQuery({ queryKey: ['pdcs', 'summary', projectId], queryFn: () => api.get<Summary>('/pdcs/summary', { projectId: projectId ?? undefined }) });
+  const summary = useQuery({
+    queryKey: ['pdcs', 'summary', projectId],
+    queryFn: () => api.get<Summary>('/pdcs/summary', { projectId: projectId ?? undefined }),
+  });
   const [creating, setCreating] = React.useState(false);
   const [action, setAction] = React.useState<{ pdc: Pdc; kind: Action } | null>(null);
   const today = todayInIndia();
@@ -81,7 +84,11 @@ export function PdcPage() {
       header: 'Cheque date',
       sortKey: 'chequeDate',
       cell: (r) => (
-        <span className={r.status === 'received' && r.chequeDate.slice(0, 10) <= today ? 'font-medium text-amber-700 dark:text-amber-400' : ''}>{formatDate(r.chequeDate.slice(0, 10))}</span>
+        <span
+          className={r.status === 'received' && r.chequeDate.slice(0, 10) <= today ? 'font-medium text-amber-700 dark:text-amber-400' : ''}
+        >
+          {formatDate(r.chequeDate.slice(0, 10))}
+        </span>
       ),
     },
     {
@@ -91,14 +98,24 @@ export function PdcPage() {
         <div>
           <p>{r.customerId?.name}</p>
           {r.bookingId && (
-            <Link to={`/post-sales/bookings/${r.bookingId.id}`} className="text-xs text-primary hover:underline" onClick={(e) => e.stopPropagation()}>
+            <Link
+              to={`/post-sales/bookings/${r.bookingId.id}`}
+              className="text-xs text-primary hover:underline"
+              onClick={(e) => e.stopPropagation()}
+            >
               {r.bookingId.bookingNumber}
             </Link>
           )}
         </div>
       ),
     },
-    { key: 'amount', header: 'Amount', sortKey: 'amountPaise', align: 'right', cell: (r) => <span className="tabular">{formatINR(r.amountPaise)}</span> },
+    {
+      key: 'amount',
+      header: 'Amount',
+      sortKey: 'amountPaise',
+      align: 'right',
+      cell: (r) => <span className="tabular">{formatINR(r.amountPaise)}</span>,
+    },
     {
       key: 'status',
       header: 'Status',
@@ -133,12 +150,22 @@ export function PdcPage() {
               </Button>
             )}
             {(r.status === 'received' || r.status === 'deposited') && (
-              <Button size="icon-sm" variant="ghost" onClick={() => setAction({ pdc: r, kind: 'bounce' })} aria-label={`Mark ${r.chequeNumber} bounced`}>
+              <Button
+                size="icon-sm"
+                variant="ghost"
+                onClick={() => setAction({ pdc: r, kind: 'bounce' })}
+                aria-label={`Mark ${r.chequeNumber} bounced`}
+              >
                 <Ban />
               </Button>
             )}
             {(r.status === 'received' || r.status === 'bounced') && (
-              <Button size="icon-sm" variant="ghost" onClick={() => setAction({ pdc: r, kind: 'return' })} aria-label={`Return ${r.chequeNumber} to customer`}>
+              <Button
+                size="icon-sm"
+                variant="ghost"
+                onClick={() => setAction({ pdc: r, kind: 'return' })}
+                aria-label={`Return ${r.chequeNumber} to customer`}
+              >
                 <Undo2 />
               </Button>
             )}
@@ -174,13 +201,34 @@ export function PdcPage() {
           tone={s?.dueForDeposit.count ? 'warning' : 'default'}
           loading={summary.isPending}
         />
-        <StatCard label="In hand (not yet deposited)" value={formatINR(st('received').amountPaise)} hint={`${st('received').count} cheques`} loading={summary.isPending} />
-        <StatCard label="Deposited, awaiting clearance" value={formatINR(st('deposited').amountPaise)} hint={`${st('deposited').count} cheques`} loading={summary.isPending} />
-        <StatCard label="Bounced" value={formatINR(st('bounced').amountPaise)} hint={`${st('bounced').count} cheques`} tone={st('bounced').count ? 'danger' : 'default'} loading={summary.isPending} />
+        <StatCard
+          label="In hand (not yet deposited)"
+          value={formatINR(st('received').amountPaise)}
+          hint={`${st('received').count} cheques`}
+          loading={summary.isPending}
+        />
+        <StatCard
+          label="Deposited, awaiting clearance"
+          value={formatINR(st('deposited').amountPaise)}
+          hint={`${st('deposited').count} cheques`}
+          loading={summary.isPending}
+        />
+        <StatCard
+          label="Bounced"
+          value={formatINR(st('bounced').amountPaise)}
+          hint={`${st('bounced').count} cheques`}
+          tone={st('bounced').count ? 'danger' : 'default'}
+          loading={summary.isPending}
+        />
       </div>
       <div className="mb-4 flex flex-wrap items-center gap-2">
         <SearchInput value={lp.q} onChange={lp.setQ} placeholder="Cheque no. or bank" className="w-full sm:w-64" />
-        <Select className="h-9 w-auto" value={status ?? ''} onChange={(e) => lp.setFilter('status', e.target.value || undefined)} aria-label="Status">
+        <Select
+          className="h-9 w-auto"
+          value={status ?? ''}
+          onChange={(e) => lp.setFilter('status', e.target.value || undefined)}
+          aria-label="Status"
+        >
           <option value="">All statuses</option>
           {PDC_STATUSES.filter((x) => x !== 'clearing').map((x) => (
             <option key={x} value={x}>
@@ -207,7 +255,12 @@ export function PdcPage() {
         onPageSizeChange={lp.setPageSize}
         sort={lp.sort}
         onSortChange={lp.setSort}
-        empty={<EmptyState title="No cheques" description="Record post-dated cheques against bookings; deposit and clear them when they fall due." />}
+        empty={
+          <EmptyState
+            title="No cheques"
+            description="Record post-dated cheques against bookings; deposit and clear them when they fall due."
+          />
+        }
       />
       <CreatePdcDialog open={creating} onOpenChange={setCreating} />
       <PdcActionDialog action={action} onClose={() => setAction(null)} />
@@ -231,12 +284,21 @@ function CreatePdcDialog({ open, onOpenChange }: { open: boolean; onOpenChange: 
       setErrors({});
     }
   }, [open]);
-  const valid = rows.every((r) => /^\d{6}$/.test(r.chequeNumber) && r.chequeDate && rupeeField('Amount', { min: 1 }).safeParse(r.amount).success);
+  const valid = rows.every(
+    (r) => /^\d{6}$/.test(r.chequeNumber) && r.chequeDate && rupeeField('Amount', { min: 1 }).safeParse(r.amount).success,
+  );
   const save = useMutation({
     mutationFn: async () => {
       // A series of cheques for one booking (e.g. monthly EMIs) is saved one by one.
       for (const r of rows) {
-        await api.post('/pdcs', { bookingId: booking!.id, chequeNumber: r.chequeNumber, bankName, branch: branch || undefined, chequeDate: r.chequeDate, amountPaise: toPaise(r.amount) });
+        await api.post('/pdcs', {
+          bookingId: booking!.id,
+          chequeNumber: r.chequeNumber,
+          bankName,
+          branch: branch || undefined,
+          chequeDate: r.chequeDate,
+          amountPaise: toPaise(r.amount),
+        });
       }
       return rows.length;
     },
@@ -285,10 +347,32 @@ function CreatePdcDialog({ open, onOpenChange }: { open: boolean; onOpenChange: 
           </div>
           {rows.map((r, i) => (
             <div key={i} className="grid grid-cols-[1fr_1fr_1fr_auto] gap-2">
-              <Input inputMode="numeric" maxLength={6} value={r.chequeNumber} onChange={(e) => setRows(rows.map((x, j) => (j === i ? { ...x, chequeNumber: e.target.value.replace(/\D/g, '') } : x)))} aria-label="Cheque number" />
-              <Input type="date" value={r.chequeDate} onChange={(e) => setRows(rows.map((x, j) => (j === i ? { ...x, chequeDate: e.target.value } : x)))} aria-label="Cheque date" />
-              <MoneyInput value={r.amount} onChange={(e) => setRows(rows.map((x, j) => (j === i ? { ...x, amount: e.target.value } : x)))} aria-label="Amount" />
-              <Button type="button" variant="ghost" size="icon" disabled={rows.length === 1} onClick={() => setRows(rows.filter((_, j) => j !== i))} aria-label="Remove cheque">
+              <Input
+                inputMode="numeric"
+                maxLength={6}
+                value={r.chequeNumber}
+                onChange={(e) => setRows(rows.map((x, j) => (j === i ? { ...x, chequeNumber: e.target.value.replace(/\D/g, '') } : x)))}
+                aria-label="Cheque number"
+              />
+              <Input
+                type="date"
+                value={r.chequeDate}
+                onChange={(e) => setRows(rows.map((x, j) => (j === i ? { ...x, chequeDate: e.target.value } : x)))}
+                aria-label="Cheque date"
+              />
+              <MoneyInput
+                value={r.amount}
+                onChange={(e) => setRows(rows.map((x, j) => (j === i ? { ...x, amount: e.target.value } : x)))}
+                aria-label="Amount"
+              />
+              <Button
+                type="button"
+                variant="ghost"
+                size="icon"
+                disabled={rows.length === 1}
+                onClick={() => setRows(rows.filter((_, j) => j !== i))}
+                aria-label="Remove cheque"
+              >
                 ×
               </Button>
             </div>
@@ -337,7 +421,9 @@ function PdcActionDialog({ action, onClose }: { action: { pdc: Pdc; kind: Action
       qc.invalidateQueries({ queryKey: ['pdcs'] });
       qc.invalidateQueries({ queryKey: ['payments'] });
       qc.invalidateQueries({ queryKey: ['dues'] });
-      toast.success(action?.kind === 'clear' ? `Cleared – receipt ${(r as { receiptNumber: string }).receiptNumber} recorded` : 'Cheque updated');
+      toast.success(
+        action?.kind === 'clear' ? `Cleared – receipt ${(r as { receiptNumber: string }).receiptNumber} recorded` : 'Cheque updated',
+      );
       onClose();
     },
     onError: (e) => {
@@ -345,17 +431,32 @@ function PdcActionDialog({ action, onClose }: { action: { pdc: Pdc; kind: Action
       toast.error(errorMessage(e));
     },
   });
-  const titles: Record<Action, string> = { deposit: 'Deposit cheque', clear: 'Mark cheque cleared', bounce: 'Mark cheque bounced', return: 'Return cheque to customer' };
+  const titles: Record<Action, string> = {
+    deposit: 'Deposit cheque',
+    clear: 'Mark cheque cleared',
+    bounce: 'Mark cheque bounced',
+    return: 'Return cheque to customer',
+  };
   const needsReason = action?.kind === 'bounce' || action?.kind === 'return';
   return (
     <Dialog open={!!action} onOpenChange={(o) => !o && onClose()}>
       <DialogContent
         title={action ? titles[action.kind] : ''}
-        description={action ? `Cheque ${action.pdc.chequeNumber} · ${action.pdc.bankName} · ${formatINR(action.pdc.amountPaise)} · ${action.pdc.customerId?.name ?? ''}` : undefined}
+        description={
+          action
+            ? `Cheque ${action.pdc.chequeNumber} · ${action.pdc.bankName} · ${formatINR(action.pdc.amountPaise)} · ${action.pdc.customerId?.name ?? ''}`
+            : undefined
+        }
       >
-        {action?.kind === 'clear' && <p className="text-sm text-muted-foreground">A receipt is recorded against the booking and allocated to its oldest dues.</p>}
+        {action?.kind === 'clear' && (
+          <p className="text-sm text-muted-foreground">A receipt is recorded against the booking and allocated to its oldest dues.</p>
+        )}
         {action?.kind !== 'return' && (
-          <Field label={action?.kind === 'deposit' ? 'Deposited on' : action?.kind === 'clear' ? 'Cleared on' : 'Bounced on'} htmlFor="pa-date" required>
+          <Field
+            label={action?.kind === 'deposit' ? 'Deposited on' : action?.kind === 'clear' ? 'Cleared on' : 'Bounced on'}
+            htmlFor="pa-date"
+            required
+          >
             <Input type="date" value={date} onChange={(e) => setDate(e.target.value)} />
           </Field>
         )}
@@ -366,14 +467,24 @@ function PdcActionDialog({ action, onClose }: { action: { pdc: Pdc; kind: Action
         )}
         {needsReason && (
           <Field label="Reason" htmlFor="pa-reason" required>
-            <Textarea rows={2} value={reason} onChange={(e) => setReason(e.target.value)} placeholder={action?.kind === 'bounce' ? 'Insufficient funds' : ''} />
+            <Textarea
+              rows={2}
+              value={reason}
+              onChange={(e) => setReason(e.target.value)}
+              placeholder={action?.kind === 'bounce' ? 'Insufficient funds' : ''}
+            />
           </Field>
         )}
         <DialogFooter>
           <Button variant="outline" onClick={onClose}>
             Cancel
           </Button>
-          <Button variant={action?.kind === 'bounce' ? 'destructive' : 'default'} loading={run.isPending} disabled={needsReason && !reason.trim()} onClick={() => run.mutate()}>
+          <Button
+            variant={action?.kind === 'bounce' ? 'destructive' : 'default'}
+            loading={run.isPending}
+            disabled={needsReason && !reason.trim()}
+            onClick={() => run.mutate()}
+          >
             Confirm
           </Button>
         </DialogFooter>

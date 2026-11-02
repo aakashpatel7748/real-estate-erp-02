@@ -61,7 +61,8 @@ export async function setBookingLoan(ctx: TenantContext, bookingId: string, inpu
   const booking = await loadBooking(ctx, bookingId);
   if (!['reserved', 'booked'].includes(booking.status)) throw businessRule(`This booking is ${booking.status}`);
   if (input) {
-    if (!(await Financer.exists({ companyId: ctx.companyId, deletedAt: null, _id: toObjectId(input.financerId) }))) throw badRequest('Lender not found');
+    if (!(await Financer.exists({ companyId: ctx.companyId, deletedAt: null, _id: toObjectId(input.financerId) })))
+      throw badRequest('Lender not found');
     if (input.disbursedPaise && input.sanctionedPaise && input.disbursedPaise > input.sanctionedPaise) {
       throw badRequest('Disbursed amount cannot exceed the sanctioned amount');
     }
@@ -81,7 +82,11 @@ export async function markAllotmentIssued(ctx: TenantContext, bookingId: string,
     ? { $set: { allotment: { issuedAt: new Date(), issuedBy: ctx.userId, deliveredVia: via } } }
     : { $unset: { allotment: 1 } };
   await Booking.updateOne({ companyId: ctx.companyId, _id: booking._id }, update);
-  await audit(ctx, { action: issued ? 'postsales.allotment_issued' : 'postsales.allotment_unissued', entityType: 'booking', entityId: booking._id });
+  await audit(ctx, {
+    action: issued ? 'postsales.allotment_issued' : 'postsales.allotment_unissued',
+    entityType: 'booking',
+    entityId: booking._id,
+  });
   return { id: String(booking._id), issued };
 }
 
@@ -90,7 +95,8 @@ async function unitsByBooking(ctx: TenantContext, bookingIds: Types.ObjectId[], 
   if (activeOnly) filter.active = true;
   const items = await BookingItem.find(filter).select('bookingId plotNumber blockCode').lean();
   const map = new Map<string, string[]>();
-  for (const i of items) map.set(String(i.bookingId), [...(map.get(String(i.bookingId)) ?? []), i.blockCode ? `${i.blockCode}-${i.plotNumber}` : i.plotNumber]);
+  for (const i of items)
+    map.set(String(i.bookingId), [...(map.get(String(i.bookingId)) ?? []), i.blockCode ? `${i.blockCode}-${i.plotNumber}` : i.plotNumber]);
   return map;
 }
 
@@ -99,7 +105,10 @@ const BOOKING_POP = (ctx: TenantContext) => [
   { path: 'projectId', select: 'name code', match: { companyId: ctx.companyId } },
 ];
 
-export async function listAllotments(ctx: TenantContext, q: { page: number; pageSize: number; sort?: string; q?: string; projectId?: string; issued?: string }) {
+export async function listAllotments(
+  ctx: TenantContext,
+  q: { page: number; pageSize: number; sort?: string; q?: string; projectId?: string; issued?: string },
+) {
   const filter: Record<string, unknown> = { ...scopedFilter(ctx, q.projectId), status: 'booked' };
   if (q.issued === 'true') filter['allotment.issuedAt'] = { $ne: null };
   if (q.issued === 'false') filter['allotment.issuedAt'] = null;
@@ -117,10 +126,19 @@ export async function listAllotments(ctx: TenantContext, q: { page: number; page
     Booking.countDocuments(filter),
     Booking.aggregate<{ issued: number; pending: number }>([
       { $match: { ...scopedFilter(ctx, q.projectId), status: 'booked' } },
-      { $group: { _id: null, issued: { $sum: { $cond: [{ $ifNull: ['$allotment.issuedAt', false] }, 1, 0] } }, pending: { $sum: { $cond: [{ $ifNull: ['$allotment.issuedAt', false] }, 0, 1] } } } },
+      {
+        $group: {
+          _id: null,
+          issued: { $sum: { $cond: [{ $ifNull: ['$allotment.issuedAt', false] }, 1, 0] } },
+          pending: { $sum: { $cond: [{ $ifNull: ['$allotment.issuedAt', false] }, 0, 1] } },
+        },
+      },
     ]),
   ]);
-  const units = await unitsByBooking(ctx, items.map((i) => i._id));
+  const units = await unitsByBooking(
+    ctx,
+    items.map((i) => i._id),
+  );
   return {
     items: items.map((i) => ({ ...i, units: units.get(String(i._id)) ?? [] })),
     meta: pageMeta(q.page, q.pageSize, total),
@@ -128,7 +146,10 @@ export async function listAllotments(ctx: TenantContext, q: { page: number; page
   };
 }
 
-export async function listCancellations(ctx: TenantContext, q: { page: number; pageSize: number; sort?: string; q?: string; projectId?: string; refund?: string }) {
+export async function listCancellations(
+  ctx: TenantContext,
+  q: { page: number; pageSize: number; sort?: string; q?: string; projectId?: string; refund?: string },
+) {
   const filter: Record<string, unknown> = { ...scopedFilter(ctx, q.projectId), status: { $in: ['cancelled', 'expired'] } };
   if (q.refund === 'pending') filter.$expr = { $gt: ['$refundablePaise', '$refundedPaise'] };
   if (q.refund === 'settled') filter.$expr = { $lte: ['$refundablePaise', '$refundedPaise'] };
@@ -139,7 +160,9 @@ export async function listCancellations(ctx: TenantContext, q: { page: number; p
       .sort(sort)
       .skip((q.page - 1) * q.pageSize)
       .limit(q.pageSize)
-      .select('bookingNumber bookingDate status closedAt cancellation netAmountPaise receivedPaise refundablePaise refundedPaise customerId projectId')
+      .select(
+        'bookingNumber bookingDate status closedAt cancellation netAmountPaise receivedPaise refundablePaise refundedPaise customerId projectId',
+      )
       .populate(BOOKING_POP(ctx))
       .populate('cancellation.by', 'name')
       .lean(),
@@ -166,7 +189,13 @@ export async function listCancellations(ctx: TenantContext, q: { page: number; p
   return {
     items: items.map((i) => ({ ...i, units: units.get(String(i._id)) ?? [] })),
     meta: pageMeta(q.page, q.pageSize, total),
-    summary: { count: t?.n ?? 0, chargesPaise: t?.charges ?? 0, refundablePaise: t?.refundable ?? 0, refundedPaise: t?.refunded ?? 0, pendingRefundPaise: (t?.refundable ?? 0) - (t?.refunded ?? 0) },
+    summary: {
+      count: t?.n ?? 0,
+      chargesPaise: t?.charges ?? 0,
+      refundablePaise: t?.refundable ?? 0,
+      refundedPaise: t?.refunded ?? 0,
+      pendingRefundPaise: (t?.refundable ?? 0) - (t?.refunded ?? 0),
+    },
   };
 }
 
@@ -194,7 +223,10 @@ export async function listDues(
   }
   const sortField = (q.sort ?? '-overduePaise').replace(/^-/, '');
   const allowed = ['overduePaise', 'outstandingPaise', 'daysOverdue', 'upcomingPaise'];
-  const sort = { [allowed.includes(sortField) ? sortField : 'overduePaise']: q.sort?.startsWith('-') === false ? 1 : -1, _id: 1 } as Record<string, 1 | -1>;
+  const sort = { [allowed.includes(sortField) ? sortField : 'overduePaise']: q.sort?.startsWith('-') === false ? 1 : -1, _id: 1 } as Record<
+    string,
+    1 | -1
+  >;
 
   const pipeline = [
     { $match: base },
@@ -214,14 +246,24 @@ export async function listDues(
     { $match: { outstandingPaise: { $gt: 0 } } },
     {
       $addFields: {
-        daysOverdue: { $cond: [{ $ifNull: ['$oldestOverdue', false] }, { $floor: { $divide: [{ $subtract: [today, '$oldestOverdue'] }, 86_400_000] } }, 0] },
+        daysOverdue: {
+          $cond: [
+            { $ifNull: ['$oldestOverdue', false] },
+            { $floor: { $divide: [{ $subtract: [today, '$oldestOverdue'] }, 86_400_000] } },
+            0,
+          ],
+        },
       },
     },
     {
       $lookup: {
         from: 'collectionfollowups',
         let: { b: '$_id' },
-        pipeline: [{ $match: { $expr: { $and: [{ $eq: ['$bookingId', '$$b'] }, { $eq: ['$companyId', ctx.companyId] }] } } }, { $sort: { createdAt: -1 } }, { $limit: 1 }],
+        pipeline: [
+          { $match: { $expr: { $and: [{ $eq: ['$bookingId', '$$b'] }, { $eq: ['$companyId', ctx.companyId] }] } } },
+          { $sort: { createdAt: -1 } },
+          { $limit: 1 },
+        ],
         as: 'lastFollowUp',
       },
     },
@@ -230,7 +272,10 @@ export async function listDues(
       $lookup: {
         from: 'customers',
         let: { c: '$customerId' },
-        pipeline: [{ $match: { $expr: { $and: [{ $eq: ['$_id', '$$c'] }, { $eq: ['$companyId', ctx.companyId] }] } } }, { $project: { name: 1, phone: 1, customerCode: 1 } }],
+        pipeline: [
+          { $match: { $expr: { $and: [{ $eq: ['$_id', '$$c'] }, { $eq: ['$companyId', ctx.companyId] }] } } },
+          { $project: { name: 1, phone: 1, customerCode: 1 } },
+        ],
         as: 'customer',
       },
     },
@@ -238,7 +283,10 @@ export async function listDues(
       $lookup: {
         from: 'bookings',
         let: { b: '$_id' },
-        pipeline: [{ $match: { $expr: { $and: [{ $eq: ['$_id', '$$b'] }, { $eq: ['$companyId', ctx.companyId] }] } } }, { $project: { bookingNumber: 1, status: 1, netAmountPaise: 1, receivedPaise: 1 } }],
+        pipeline: [
+          { $match: { $expr: { $and: [{ $eq: ['$_id', '$$b'] }, { $eq: ['$companyId', ctx.companyId] }] } } },
+          { $project: { bookingNumber: 1, status: 1, netAmountPaise: 1, receivedPaise: 1 } },
+        ],
         as: 'booking',
       },
     },
@@ -249,7 +297,16 @@ export async function listDues(
       $facet: {
         items: [{ $sort: sort }, { $skip: (q.page - 1) * q.pageSize }, { $limit: q.pageSize }],
         total: [{ $count: 'n' }],
-        totals: [{ $group: { _id: null, overdue: { $sum: '$overduePaise' }, outstanding: { $sum: '$outstandingPaise' }, upcoming: { $sum: '$upcomingPaise' } } }],
+        totals: [
+          {
+            $group: {
+              _id: null,
+              overdue: { $sum: '$overduePaise' },
+              outstanding: { $sum: '$outstandingPaise' },
+              upcoming: { $sum: '$upcomingPaise' },
+            },
+          },
+        ],
       },
     },
   ];
@@ -269,7 +326,16 @@ export async function listDues(
     },
     {
       $group: {
-        _id: { $switch: { branches: [{ case: { $lte: ['$days', 30] }, then: '0_30' }, { case: { $lte: ['$days', 60] }, then: '31_60' }, { case: { $lte: ['$days', 90] }, then: '61_90' }], default: '90_plus' } },
+        _id: {
+          $switch: {
+            branches: [
+              { case: { $lte: ['$days', 30] }, then: '0_30' },
+              { case: { $lte: ['$days', 60] }, then: '31_60' },
+              { case: { $lte: ['$days', 90] }, then: '61_90' },
+            ],
+            default: '90_plus',
+          },
+        },
         amount: { $sum: '$amount' },
         bookings: { $sum: 1 },
       },
@@ -290,7 +356,11 @@ export async function listDues(
 
 export async function listFollowUps(ctx: TenantContext, bookingId: string) {
   const booking = await loadBooking(ctx, bookingId);
-  return CollectionFollowUp.find({ companyId: ctx.companyId, bookingId: booking._id }).sort({ createdAt: -1 }).limit(100).populate('createdBy', 'name').lean();
+  return CollectionFollowUp.find({ companyId: ctx.companyId, bookingId: booking._id })
+    .sort({ createdAt: -1 })
+    .limit(100)
+    .populate('createdBy', 'name')
+    .lean();
 }
 
 export async function createFollowUp(ctx: TenantContext, input: FollowUpInput) {
@@ -328,16 +398,24 @@ async function duesGuard(
   session: ClientSession,
 ) {
   const settings = await companySettings(ctx);
-  const required = kind === 'registry' ? (settings?.registryRequiresFullPayment ?? true) : (settings?.possessionRequiresFullPayment ?? true);
+  const required =
+    kind === 'registry' ? (settings?.registryRequiresFullPayment ?? true) : (settings?.possessionRequiresFullPayment ?? true);
   const { totalPaise } = await outstanding(ctx, bookingId, undefined, session);
   if (required && totalPaise > 0) {
-    if (!override) throw businessRule(`${formatINR(totalPaise)} is still outstanding on this booking. Collect it first, or proceed with an override and a remark.`);
+    if (!override)
+      throw businessRule(
+        `${formatINR(totalPaise)} is still outstanding on this booking. Collect it first, or proceed with an override and a remark.`,
+      );
     if (!remarks?.trim()) throw businessRule('Add a remark explaining why you are proceeding with dues outstanding');
   }
   return { outstandingPaise: totalPaise, overridden: required && totalPaise > 0 };
 }
 
-async function markUnitsSold(ctx: TenantContext, booking: { _id: Types.ObjectId; projectId: Types.ObjectId; bookingNumber: string }, session: ClientSession) {
+async function markUnitsSold(
+  ctx: TenantContext,
+  booking: { _id: Types.ObjectId; projectId: Types.ObjectId; bookingNumber: string },
+  session: ClientSession,
+) {
   const items = await BookingItem.find({ companyId: ctx.companyId, bookingId: booking._id, active: true }).session(session).lean();
   for (const item of items) {
     const res = await Plot.updateOne(
@@ -346,7 +424,18 @@ async function markUnitsSold(ctx: TenantContext, booking: { _id: Types.ObjectId;
       { session },
     );
     if (res.modifiedCount === 1) {
-      await recordPlotStatus(ctx, { projectId: booking.projectId, plotId: item.plotId, from: 'booked', to: 'sold', reason: `Sale deed registered (${booking.bookingNumber})`, bookingId: booking._id }, session);
+      await recordPlotStatus(
+        ctx,
+        {
+          projectId: booking.projectId,
+          plotId: item.plotId,
+          from: 'booked',
+          to: 'sold',
+          reason: `Sale deed registered (${booking.bookingNumber})`,
+          bookingId: booking._id,
+        },
+        session,
+      );
     }
   }
 }
@@ -361,10 +450,19 @@ export async function createSalesDocument(ctx: TenantContext, input: SalesDocCre
   return withTransaction(async (session) => {
     const booking = await loadBooking(ctx, input.bookingId, session);
     if (input.kind !== 'demand' && booking.status !== 'booked') throw businessRule('Confirm the booking first');
-    if (input.kind === 'demand' && !['reserved', 'booked'].includes(booking.status)) throw businessRule(`This booking is ${booking.status}`);
+    if (input.kind === 'demand' && !['reserved', 'booked'].includes(booking.status))
+      throw businessRule(`This booking is ${booking.status}`);
     if (input.kind !== 'demand') {
-      const active = await SalesDocument.exists({ companyId: ctx.companyId, bookingId: booking._id, kind: input.kind, status: { $ne: 'cancelled' } }).session(session);
-      if (active) throw businessRule(`This booking already has an active ${input.kind === 'agreement' ? 'agreement' : input.kind === 'registry' ? 'registry' : 'possession letter'}`);
+      const active = await SalesDocument.exists({
+        companyId: ctx.companyId,
+        bookingId: booking._id,
+        kind: input.kind,
+        status: { $ne: 'cancelled' },
+      }).session(session);
+      if (active)
+        throw businessRule(
+          `This booking already has an active ${input.kind === 'agreement' ? 'agreement' : input.kind === 'registry' ? 'registry' : 'possession letter'}`,
+        );
     }
 
     let status = SALES_DOC_STATUSES[input.kind][0]!;
@@ -378,11 +476,17 @@ export async function createSalesDocument(ctx: TenantContext, input: SalesDocCre
       if (input.details.registrationNumber && input.details.executedOn) status = 'registered';
       amountPaise = (input.details.stampDutyPaise ?? 0) + (input.details.registrationFeePaise ?? 0);
     } else if (input.kind === 'registry') {
-      if (input.details.consultantId && !(await Consultant.exists({ companyId: ctx.companyId, _id: toObjectId(input.details.consultantId) }).session(session))) {
+      if (
+        input.details.consultantId &&
+        !(await Consultant.exists({ companyId: ctx.companyId, _id: toObjectId(input.details.consultantId) }).session(session))
+      ) {
         throw badRequest('Consultant not found');
       }
       guard = await duesGuard(ctx, 'registry', booking._id, input.overrideDues, input.remarks, session);
-      details = cleanDetails({ ...input.details, consultantId: input.details.consultantId ? toObjectId(input.details.consultantId) : undefined });
+      details = cleanDetails({
+        ...input.details,
+        consultantId: input.details.consultantId ? toObjectId(input.details.consultantId) : undefined,
+      });
       amountPaise = (input.details.stampDutyPaise ?? 0) + (input.details.registrationFeePaise ?? 0);
       if (input.details.registeredOn) {
         if (!input.details.deedNumber) throw badRequest('Enter the deed number of the registered sale deed');
@@ -437,7 +541,11 @@ export async function createSalesDocument(ctx: TenantContext, input: SalesDocCre
       { session },
     );
     if (input.kind === 'registry' && status === 'registered') await markUnitsSold(ctx, booking, session);
-    await audit(ctx, { action: `postsales.${input.kind}_create`, entityType: 'booking', entityId: booking._id, summary: `${number} (${status})` }, session);
+    await audit(
+      ctx,
+      { action: `postsales.${input.kind}_create`, entityType: 'booking', entityId: booking._id, summary: `${number} (${status})` },
+      session,
+    );
     return doc!.toJSON();
   });
 }
@@ -455,7 +563,9 @@ export async function updateSalesDocument(
   input: { status?: string; details?: Record<string, unknown>; remarks?: string; overrideDues: boolean },
 ) {
   return withTransaction(async (session) => {
-    const doc = await SalesDocument.findOne({ companyId: ctx.companyId, _id: toObjectId(id) }).session(session).lean();
+    const doc = await SalesDocument.findOne({ companyId: ctx.companyId, _id: toObjectId(id) })
+      .session(session)
+      .lean();
     if (!doc) throw notFound('Document');
     assertProjectAccess(ctx, doc.projectId);
     const kind = doc.kind as SalesDocKind;
@@ -466,15 +576,29 @@ export async function updateSalesDocument(
       // Only known detail keys for the kind are kept (validated against the create schema shape).
       const allowed: Record<string, string[]> = {
         agreement: ['executedOn', 'stampDutyPaise', 'registrationFeePaise', 'registrationNumber', 'witnesses', 'terms'],
-        registry: ['scheduledOn', 'registeredOn', 'deedNumber', 'subRegistrarOffice', 'stampDutyPaise', 'registrationFeePaise', 'consultantId'],
+        registry: [
+          'scheduledOn',
+          'registeredOn',
+          'deedNumber',
+          'subRegistrarOffice',
+          'stampDutyPaise',
+          'registrationFeePaise',
+          'consultantId',
+        ],
         possession: ['offeredOn', 'handedOverOn', 'possessionType', 'keysHandedTo'],
       };
       const merged: Record<string, unknown> = { ...(doc.details as object) };
       for (const [k, v] of Object.entries(input.details)) {
         if (!allowed[kind]!.includes(k)) throw badRequest(`Unknown field ${k}`);
-        if (k.endsWith('Paise') && v !== null && v !== undefined && (!Number.isSafeInteger(v) || (v as number) < 0)) throw badRequest(`${k} must be whole paise`);
+        if (k.endsWith('Paise') && v !== null && v !== undefined && (!Number.isSafeInteger(v) || (v as number) < 0))
+          throw badRequest(`${k} must be whole paise`);
         if (k.endsWith('On') && v && !/^\d{4}-\d{2}-\d{2}$/.test(String(v))) throw badRequest(`${k} must be a date`);
-        if (k === 'consultantId' && v && !(await Consultant.exists({ companyId: ctx.companyId, _id: toObjectId(String(v)) }).session(session))) throw badRequest('Consultant not found');
+        if (
+          k === 'consultantId' &&
+          v &&
+          !(await Consultant.exists({ companyId: ctx.companyId, _id: toObjectId(String(v)) }).session(session))
+        )
+          throw badRequest('Consultant not found');
         if (v === null || v === '') delete merged[k];
         else merged[k] = typeof v === 'string' ? v.slice(0, 10_000) : v;
       }
@@ -486,15 +610,30 @@ export async function updateSalesDocument(
     let to: string | undefined;
     if (input.status && input.status !== doc.status) {
       to = input.status;
-      if (!NEXT_STATUS[kind][doc.status]?.includes(to)) throw businessRule(`A ${doc.status.replace('_', ' ')} ${kind} cannot be marked ${to.replace('_', ' ')}`);
+      if (!NEXT_STATUS[kind][doc.status]?.includes(to))
+        throw businessRule(`A ${doc.status.replace('_', ' ')} ${kind} cannot be marked ${to.replace('_', ' ')}`);
       if (kind === 'registry' && to === 'registered') {
         if (!details.deedNumber || !details.registeredOn) throw badRequest('Enter the deed number and registration date first');
-        await duesGuard(ctx, 'registry', doc.bookingId, input.overrideDues || !!doc.duesOverridden, input.remarks ?? doc.remarks ?? undefined, session);
+        await duesGuard(
+          ctx,
+          'registry',
+          doc.bookingId,
+          input.overrideDues || !!doc.duesOverridden,
+          input.remarks ?? doc.remarks ?? undefined,
+          session,
+        );
       }
       if (kind === 'possession' && to === 'handed_over') {
         if (!details.handedOverOn) details.handedOverOn = todayInIndia();
         set.details = details;
-        await duesGuard(ctx, 'possession', doc.bookingId, input.overrideDues || !!doc.duesOverridden, input.remarks ?? doc.remarks ?? undefined, session);
+        await duesGuard(
+          ctx,
+          'possession',
+          doc.bookingId,
+          input.overrideDues || !!doc.duesOverridden,
+          input.remarks ?? doc.remarks ?? undefined,
+          session,
+        );
       }
       if (kind === 'agreement' && to === 'executed' && !details.executedOn) {
         details.executedOn = todayInIndia();
@@ -512,7 +651,17 @@ export async function updateSalesDocument(
       const booking = await loadBooking(ctx, doc.bookingId, session);
       await markUnitsSold(ctx, booking, session);
     }
-    await audit(ctx, { action: `postsales.${kind}_update`, entityType: 'booking', entityId: doc.bookingId, summary: doc.number, changes: { ...input, details: undefined } }, session);
+    await audit(
+      ctx,
+      {
+        action: `postsales.${kind}_update`,
+        entityType: 'booking',
+        entityId: doc.bookingId,
+        summary: doc.number,
+        changes: { ...input, details: undefined },
+      },
+      session,
+    );
     return { id: String(doc._id), status: to ?? doc.status };
   });
 }
@@ -523,14 +672,29 @@ export async function bulkDemand(ctx: TenantContext, input: { projectId: string;
   const settings = await companySettings(ctx);
   const dueUpTo = input.dueUpTo ?? addDays(input.date, settings?.demandLeadDays ?? 15);
   const candidates = await Installment.aggregate<{ _id: Types.ObjectId }>([
-    { $match: { companyId: ctx.companyId, projectId: toObjectId(input.projectId), status: { $in: ['pending', 'partial'] }, dueDate: { $lte: day(dueUpTo) } } },
+    {
+      $match: {
+        companyId: ctx.companyId,
+        projectId: toObjectId(input.projectId),
+        status: { $in: ['pending', 'partial'] },
+        dueDate: { $lte: day(dueUpTo) },
+      },
+    },
     { $group: { _id: '$bookingId', bal: { $sum: { $subtract: ['$amountPaise', '$paidPaise'] } } } },
     { $match: { bal: { $gt: 0 } } },
   ]);
   const already = new Set(
-    (await SalesDocument.find({ companyId: ctx.companyId, kind: 'demand', status: 'issued', date: day(input.date), bookingId: { $in: candidates.map((c) => c._id) } }).select('bookingId').lean()).map(
-      (d) => String(d.bookingId),
-    ),
+    (
+      await SalesDocument.find({
+        companyId: ctx.companyId,
+        kind: 'demand',
+        status: 'issued',
+        date: day(input.date),
+        bookingId: { $in: candidates.map((c) => c._id) },
+      })
+        .select('bookingId')
+        .lean()
+    ).map((d) => String(d.bookingId)),
   );
   let created = 0;
   let skipped = 0;
@@ -551,7 +715,16 @@ export async function bulkDemand(ctx: TenantContext, input: { projectId: string;
 
 export async function listSalesDocuments(
   ctx: TenantContext,
-  q: { page: number; pageSize: number; sort?: string; q?: string; kind: SalesDocKind; projectId?: string; status?: string; bookingId?: string },
+  q: {
+    page: number;
+    pageSize: number;
+    sort?: string;
+    q?: string;
+    kind: SalesDocKind;
+    projectId?: string;
+    status?: string;
+    bookingId?: string;
+  },
 ) {
   const filter: Record<string, unknown> = { ...scopedFilter(ctx, q.projectId), kind: q.kind };
   if (q.status) filter.status = q.status;
@@ -569,22 +742,35 @@ export async function listSalesDocuments(
       .populate({ path: 'projectId', select: 'name code', match: { companyId: ctx.companyId } })
       .lean(),
     SalesDocument.countDocuments(filter),
-    SalesDocument.aggregate<{ _id: string; n: number }>([{ $match: { ...scopedFilter(ctx, q.projectId), kind: q.kind } }, { $group: { _id: '$status', n: { $sum: 1 } } }]),
+    SalesDocument.aggregate<{ _id: string; n: number }>([
+      { $match: { ...scopedFilter(ctx, q.projectId), kind: q.kind } },
+      { $group: { _id: '$status', n: { $sum: 1 } } },
+    ]),
   ]);
   return { items, meta: pageMeta(q.page, q.pageSize, total), summary: Object.fromEntries(counts.map((c) => [c._id, c.n])) };
 }
 
 export async function getSalesDocument(ctx: TenantContext, id: string) {
   const doc = await SalesDocument.findOne({ ...scopedFilter(ctx), _id: toObjectId(id) })
-    .populate({ path: 'bookingId', select: 'bookingNumber status bookingDate netAmountPaise receivedPaise', match: { companyId: ctx.companyId } })
+    .populate({
+      path: 'bookingId',
+      select: 'bookingNumber status bookingDate netAmountPaise receivedPaise',
+      match: { companyId: ctx.companyId },
+    })
     .populate({ path: 'customerId', select: 'name phone email address coApplicants pan', match: { companyId: ctx.companyId } })
     .populate({ path: 'projectId', select: 'name code reraNumber address', match: { companyId: ctx.companyId } })
     .populate('history.by', 'name')
     .lean();
   if (!doc) throw notFound('Document');
   const details = doc.details as Record<string, unknown>;
-  const consultant = details?.consultantId ? await Consultant.findOne({ companyId: ctx.companyId, _id: details.consultantId }).select('name firm phone').lean() : null;
-  const items = await BookingItem.find({ companyId: ctx.companyId, bookingId: (doc.bookingId as unknown as { _id: Types.ObjectId })?._id ?? doc.bookingId, active: true }).lean();
+  const consultant = details?.consultantId
+    ? await Consultant.findOne({ companyId: ctx.companyId, _id: details.consultantId }).select('name firm phone').lean()
+    : null;
+  const items = await BookingItem.find({
+    companyId: ctx.companyId,
+    bookingId: (doc.bookingId as unknown as { _id: Types.ObjectId })?._id ?? doc.bookingId,
+    active: true,
+  }).lean();
   return { ...doc, consultant, units: items };
 }
 
@@ -616,13 +802,24 @@ export async function salesDocumentPdf(ctx: TenantContext, id: string, res: Resp
     remarks?: string;
     details: Record<string, unknown>;
     bookingId: { _id: Types.ObjectId; bookingNumber: string; bookingDate: Date; netAmountPaise: number; receivedPaise: number };
-    customerId: { name: string; phone: string; email?: string; pan?: string; address?: { line1?: string; city?: string; state?: string }; coApplicants?: { name: string }[] };
+    customerId: {
+      name: string;
+      phone: string;
+      email?: string;
+      pan?: string;
+      address?: { line1?: string; city?: string; state?: string };
+      coApplicants?: { name: string }[];
+    };
     projectId: { name: string; reraNumber?: string; address?: { line1?: string; city?: string; state?: string } };
     consultant?: { name: string; firm?: string } | null;
     units: { plotNumber: string; blockCode?: string; areaX100: number; lineTotalPaise: number }[];
   };
   const company = await Company.findById(ctx.companyId).lean();
-  const bank = await Account.findOne({ companyId: ctx.companyId, isActive: true, 'bankDetails.accountNumber': { $exists: true, $ne: null } })
+  const bank = await Account.findOne({
+    companyId: ctx.companyId,
+    isActive: true,
+    'bankDetails.accountNumber': { $exists: true, $ne: null },
+  })
     .sort({ 'bankDetails.isReraAccount': -1, code: 1 })
     .lean();
   res.setHeader('Content-Type', 'application/pdf');
@@ -633,7 +830,9 @@ export async function salesDocumentPdf(ctx: TenantContext, id: string, res: Resp
   const companyName = company?.legalName || company?.name || '';
   doc.fontSize(16).font('Helvetica-Bold').text(companyName);
   doc.fontSize(9).font('Helvetica').fillColor('#555');
-  const addr = [company?.address?.line1, company?.address?.city, company?.address?.state, company?.address?.pincode].filter(Boolean).join(', ');
+  const addr = [company?.address?.line1, company?.address?.city, company?.address?.state, company?.address?.pincode]
+    .filter(Boolean)
+    .join(', ');
   if (addr) doc.text(addr);
   if (company?.gstin) doc.text(`GSTIN: ${company.gstin}`);
   doc.moveDown(0.8).fillColor('#000').fontSize(13).font('Helvetica-Bold').text(TITLES[d.kind], { align: 'center' });
@@ -651,7 +850,10 @@ export async function salesDocumentPdf(ctx: TenantContext, id: string, res: Resp
   row('Reference', d.number);
   row('Date', formatDate(iso(d.date)));
   row('Booking', d.bookingId?.bookingNumber ?? '');
-  row(d.kind === 'agreement' ? 'Allottee' : 'Customer', `${cust?.name ?? ''}${cust?.coApplicants?.length ? ` & ${cust.coApplicants.map((c) => c.name).join(', ')}` : ''}`);
+  row(
+    d.kind === 'agreement' ? 'Allottee' : 'Customer',
+    `${cust?.name ?? ''}${cust?.coApplicants?.length ? ` & ${cust.coApplicants.map((c) => c.name).join(', ')}` : ''}`,
+  );
   if (custAddr) row('Address', custAddr);
   row('Project', `${d.projectId?.name ?? ''}${d.projectId?.reraNumber ? ` (RERA: ${d.projectId.reraNumber})` : ''}`);
   row('Unit(s)', units);
@@ -664,7 +866,9 @@ export async function salesDocumentPdf(ctx: TenantContext, id: string, res: Resp
     if (det.stampDutyPaise) row('Stamp duty', rs(Number(det.stampDutyPaise)));
     if (det.registrationFeePaise) row('Registration fee', rs(Number(det.registrationFeePaise)));
     doc.moveDown(0.6).font('Helvetica-Bold').text('Parties').font('Helvetica');
-    doc.text(`This Agreement is made between ${companyName} ("the Promoter") and ${cust?.name ?? ''} ("the Allottee") for the unit(s) described above in ${d.projectId?.name ?? ''}.`);
+    doc.text(
+      `This Agreement is made between ${companyName} ("the Promoter") and ${cust?.name ?? ''} ("the Allottee") for the unit(s) described above in ${d.projectId?.name ?? ''}.`,
+    );
     doc.moveDown(0.6).font('Helvetica-Bold').text('Terms').font('Helvetica');
     const terms = typeof det.terms === 'string' && det.terms.trim() ? det.terms.split(/\n+/) : DEFAULT_TERMS;
     terms.forEach((t, i) => doc.text(`${i + 1}. ${t.trim()}`).moveDown(0.2));
@@ -681,13 +885,18 @@ export async function salesDocumentPdf(ctx: TenantContext, id: string, res: Resp
     if (det.registrationFeePaise) row('Registration fee', rs(Number(det.registrationFeePaise)));
     if (d.consultant) row('Registry consultant', `${d.consultant.name}${d.consultant.firm ? `, ${d.consultant.firm}` : ''}`);
     row('Status', d.status.replace('_', ' ').toUpperCase());
-    doc.moveDown(1).text(
-      d.status === 'registered'
-        ? `The sale deed for the above unit(s) has been registered in favour of ${cust?.name ?? ''}. Ownership stands transferred as per the registered deed.`
-        : `The sale deed registration for the above unit(s) is scheduled as stated. The purchaser is requested to be present with original identity documents and two passport-size photographs.`,
-    );
+    doc
+      .moveDown(1)
+      .text(
+        d.status === 'registered'
+          ? `The sale deed for the above unit(s) has been registered in favour of ${cust?.name ?? ''}. Ownership stands transferred as per the registered deed.`
+          : `The sale deed registration for the above unit(s) is scheduled as stated. The purchaser is requested to be present with original identity documents and two passport-size photographs.`,
+      );
   } else if (d.kind === 'possession') {
-    doc.moveDown(0.6).text(`Dear ${cust?.name ?? 'Customer'},`).moveDown(0.5);
+    doc
+      .moveDown(0.6)
+      .text(`Dear ${cust?.name ?? 'Customer'},`)
+      .moveDown(0.5);
     doc.text(
       d.status === 'handed_over'
         ? `We are pleased to confirm that ${det.possessionType === 'paper' ? 'paper' : 'physical'} possession of the above unit(s) was handed over to you on ${formatDate(String(det.handedOverOn ?? iso(d.date)))}${det.keysHandedTo ? ` (received by ${String(det.keysHandedTo)})` : ''}. From this date, maintenance and statutory charges for the unit(s) are payable by you.`
@@ -696,8 +905,15 @@ export async function salesDocumentPdf(ctx: TenantContext, id: string, res: Resp
     doc.moveDown(2).text(`For ${companyName}`).moveDown(2).text('Authorised Signatory');
   } else {
     const lines = (det.lines as { name: string; dueDate: string; amountPaise: number; paidPaise: number; balancePaise: number }[]) ?? [];
-    doc.moveDown(0.4).text(`Dear ${cust?.name ?? 'Customer'},`).moveDown(0.3);
-    doc.text(`The following installment(s) on your booking are due. Kindly pay ${rs(d.amountPaise)} on or before ${formatDate(String(det.payBy))}.`).moveDown(0.5);
+    doc
+      .moveDown(0.4)
+      .text(`Dear ${cust?.name ?? 'Customer'},`)
+      .moveDown(0.3);
+    doc
+      .text(
+        `The following installment(s) on your booking are due. Kindly pay ${rs(d.amountPaise)} on or before ${formatDate(String(det.payBy))}.`,
+      )
+      .moveDown(0.5);
     const top = doc.y;
     const cols = [50, 230, 320, 410, 480];
     doc.font('Helvetica-Bold');
@@ -715,7 +931,10 @@ export async function salesDocumentPdf(ctx: TenantContext, id: string, res: Resp
     doc.font('Helvetica-Bold').text(`Total due: ${rs(d.amountPaise)}`, 50, y + 6);
     doc.font('Helvetica').moveDown(0.8);
     if (Number(det.lateInterestBpPerMonth) > 0) {
-      doc.text(`Delayed payments attract interest at ${(Number(det.lateInterestBpPerMonth) / 100).toFixed(2)}% per month as per the agreement.`, 50);
+      doc.text(
+        `Delayed payments attract interest at ${(Number(det.lateInterestBpPerMonth) / 100).toFixed(2)}% per month as per the agreement.`,
+        50,
+      );
     }
     if (bank?.bankDetails?.accountNumber) {
       doc.moveDown(0.6).font('Helvetica-Bold').text('Payment details', 50).font('Helvetica');
@@ -723,9 +942,14 @@ export async function salesDocumentPdf(ctx: TenantContext, id: string, res: Resp
       doc.text(`Bank: ${bank.bankDetails.bankName ?? ''}${bank.bankDetails.branch ? `, ${bank.bankDetails.branch}` : ''}`);
       doc.text(`A/c No.: ${bank.bankDetails.accountNumber}   IFSC: ${bank.bankDetails.ifsc ?? ''}`);
     }
-    doc.moveDown(1.5).text('Please ignore this letter if the payment has already been made.').moveDown(1.5).text(`For ${companyName}`).moveDown(2).text('Authorised Signatory');
+    doc
+      .moveDown(1.5)
+      .text('Please ignore this letter if the payment has already been made.')
+      .moveDown(1.5)
+      .text(`For ${companyName}`)
+      .moveDown(2)
+      .text('Authorised Signatory');
   }
   if (d.remarks && d.kind !== 'agreement') doc.moveDown(1).fontSize(9).fillColor('#555').text(`Remarks: ${d.remarks}`, 50);
   doc.end();
 }
-

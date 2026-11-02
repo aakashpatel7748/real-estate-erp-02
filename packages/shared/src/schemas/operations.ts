@@ -25,7 +25,9 @@ import {
   phone,
   positivePaise,
   requiredText,
-  trimmed, patchSchema } from './common';
+  trimmed,
+  patchSchema,
+} from './common';
 
 // ---------------- Land acquisition ----------------
 export const landOwnerSchema = z.object({

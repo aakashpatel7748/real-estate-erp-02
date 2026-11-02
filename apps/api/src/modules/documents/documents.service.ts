@@ -34,7 +34,11 @@ const ENTITY_PERMISSION: Record<DocumentEntityType, Permission> = {
  * Confirms the parent record exists in the caller's company, is inside their project scope
  * and that they may read that module. Returns the record's project (if any).
  */
-export async function assertEntityAccess(ctx: TenantContext, entityType: DocumentEntityType, entityId: string): Promise<Types.ObjectId | null> {
+export async function assertEntityAccess(
+  ctx: TenantContext,
+  entityType: DocumentEntityType,
+  entityId: string,
+): Promise<Types.ObjectId | null> {
   if (!hasPermission(ctx, ENTITY_PERMISSION[entityType])) throw forbidden();
   const id = toObjectId(entityId);
   const c = ctx.companyId;
@@ -141,7 +145,8 @@ export interface UploadedFile {
 export async function uploadDocument(ctx: TenantContext, input: DocumentUploadInput, file: UploadedFile | undefined) {
   if (!file) throw badRequest('Attach a file');
   if (file.size === 0) throw badRequest('The file is empty');
-  if (file.size > env.MAX_UPLOAD_MB * 1024 * 1024) throw new AppError(413, 'VALIDATION_ERROR', `Files may be at most ${env.MAX_UPLOAD_MB} MB`);
+  if (file.size > env.MAX_UPLOAD_MB * 1024 * 1024)
+    throw new AppError(413, 'VALIDATION_ERROR', `Files may be at most ${env.MAX_UPLOAD_MB} MB`);
   const ext = ALLOWED_UPLOAD_TYPES[file.mimetype];
   if (!ext) throw badRequest('Only PDF, PNG, JPEG, WebP, Word (.docx) and Excel (.xlsx) files are allowed');
   if (!matchesSignature(file.buffer, file.mimetype)) throw badRequest('The file contents do not match its type');
@@ -185,7 +190,9 @@ export async function listDocuments(ctx: TenantContext, entityType: DocumentEnti
 
 /** Issues a short-lived signed URL after re-checking access to the parent record. */
 export async function documentUrl(ctx: TenantContext, id: string, disposition: 'inline' | 'attachment') {
-  const doc = await DocumentFile.findOne({ companyId: ctx.companyId, _id: toObjectId(id), deletedAt: null }).select('+storageKey').lean();
+  const doc = await DocumentFile.findOne({ companyId: ctx.companyId, _id: toObjectId(id), deletedAt: null })
+    .select('+storageKey')
+    .lean();
   if (!doc) throw notFound('Document');
   await assertEntityAccess(ctx, doc.entityType as DocumentEntityType, String(doc.entityId));
   const ttl = env.FILE_URL_TTL_SECONDS;

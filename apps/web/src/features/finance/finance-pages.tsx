@@ -25,9 +25,21 @@ const dateInput = 'h-9';
 function DateRange({ lp }: { lp: ReturnType<typeof useListParams> }) {
   return (
     <>
-      <Input type="date" className={`${dateInput} w-auto`} value={lp.filter('from') ?? ''} onChange={(e) => lp.setFilter('from', e.target.value || undefined)} aria-label="From date" />
+      <Input
+        type="date"
+        className={`${dateInput} w-auto`}
+        value={lp.filter('from') ?? ''}
+        onChange={(e) => lp.setFilter('from', e.target.value || undefined)}
+        aria-label="From date"
+      />
       <span className="text-sm text-muted-foreground">to</span>
-      <Input type="date" className={`${dateInput} w-auto`} value={lp.filter('to') ?? ''} onChange={(e) => lp.setFilter('to', e.target.value || undefined)} aria-label="To date" />
+      <Input
+        type="date"
+        className={`${dateInput} w-auto`}
+        value={lp.filter('to') ?? ''}
+        onChange={(e) => lp.setFilter('to', e.target.value || undefined)}
+        aria-label="To date"
+      />
     </>
   );
 }
@@ -55,7 +67,12 @@ interface VendorOption {
 }
 
 function useVendors(enabled = true) {
-  return useQuery({ queryKey: ['vendors', 'options', 'payables'], queryFn: () => api.page<VendorOption>('/vendors', { pageSize: 100 }), enabled, select: (r) => r.items });
+  return useQuery({
+    queryKey: ['vendors', 'options', 'payables'],
+    queryFn: () => api.page<VendorOption>('/vendors', { pageSize: 100 }),
+    enabled,
+    select: (r) => r.items,
+  });
 }
 
 export function VendorPaymentsPage() {
@@ -64,7 +81,10 @@ export function VendorPaymentsPage() {
   const vendorId = lp.filter('vendorId');
   const query = { ...lp.query, vendorId, from: lp.filter('from'), to: lp.filter('to'), projectId: projectId ?? undefined };
   // The filtered total comes back in a header.
-  const q = useQuery({ queryKey: ['vendor-payments', query], queryFn: () => api.pageWithHeaders<VendorPayment>('/vendor-payments', query) });
+  const q = useQuery({
+    queryKey: ['vendor-payments', query],
+    queryFn: () => api.pageWithHeaders<VendorPayment>('/vendor-payments', query),
+  });
   const total = Number(q.data?.headers.get('x-total-amount') ?? 0);
   const vendors = useVendors();
   const [paying, setPaying] = React.useState(false);
@@ -87,7 +107,13 @@ export function VendorPaymentsPage() {
     { key: 'project', header: 'Project', hideOnMobile: true, cell: (r) => r.projectId?.name ?? '—' },
     { key: 'mode', header: 'Mode', cell: (r) => `${r.mode.toUpperCase()}${r.reference ? ` · ${r.reference}` : ''}` },
     { key: 'account', header: 'Paid from', hideOnMobile: true, cell: (r) => r.accountId?.name ?? '—' },
-    { key: 'amount', header: 'Amount', sortKey: 'amountPaise', align: 'right', cell: (r) => <span className="tabular">{formatINR(r.amountPaise)}</span> },
+    {
+      key: 'amount',
+      header: 'Amount',
+      sortKey: 'amountPaise',
+      align: 'right',
+      cell: (r) => <span className="tabular">{formatINR(r.amountPaise)}</span>,
+    },
   ];
   return (
     <>
@@ -104,11 +130,21 @@ export function VendorPaymentsPage() {
       />
       <div className="mb-6 grid gap-4 sm:grid-cols-2">
         <StatCard label="Paid (filtered)" value={formatINR(total)} icon={Receipt} loading={q.isPending} />
-        <StatCard label="Owed to vendors now" value={formatINR(payable)} tone={payable ? 'warning' : 'default'} loading={vendors.isPending} />
+        <StatCard
+          label="Owed to vendors now"
+          value={formatINR(payable)}
+          tone={payable ? 'warning' : 'default'}
+          loading={vendors.isPending}
+        />
       </div>
       <div className="mb-4 flex flex-wrap items-center gap-2">
         <SearchInput value={lp.q} onChange={lp.setQ} placeholder="Voucher or reference" className="w-full sm:w-60" />
-        <Select className="h-9 w-auto" value={vendorId ?? ''} onChange={(e) => lp.setFilter('vendorId', e.target.value || undefined)} aria-label="Vendor">
+        <Select
+          className="h-9 w-auto"
+          value={vendorId ?? ''}
+          onChange={(e) => lp.setFilter('vendorId', e.target.value || undefined)}
+          aria-label="Vendor"
+        >
           <option value="">All vendors</option>
           {vendors.data?.map((v) => (
             <option key={v.id} value={v.id}>
@@ -168,7 +204,14 @@ function VendorPaymentDialog({ open, onOpenChange }: { open: boolean; onOpenChan
     mutationFn: () =>
       api.post(
         `/vendors/${vendorId}/payments`,
-        { amountPaise: toPaise(amount), paidOn, mode, reference: reference || undefined, projectId: projectId || undefined, fromAccountId: fromAccountId || undefined },
+        {
+          amountPaise: toPaise(amount),
+          paidOn,
+          mode,
+          reference: reference || undefined,
+          projectId: projectId || undefined,
+          fromAccountId: fromAccountId || undefined,
+        },
         key.current,
       ),
     onSuccess: () => {
@@ -300,14 +343,28 @@ export function LedgerAdjustmentPage() {
           '—'
         ),
     },
-    { key: 'reason', header: 'Reason', cell: (r) => <span>{titleCase(r.reason)}<span className="block max-w-xs truncate text-xs text-muted-foreground">{r.narration}</span></span> },
+    {
+      key: 'reason',
+      header: 'Reason',
+      cell: (r) => (
+        <span>
+          {titleCase(r.reason)}
+          <span className="block max-w-xs truncate text-xs text-muted-foreground">{r.narration}</span>
+        </span>
+      ),
+    },
     { key: 'account', header: 'Account', hideOnMobile: true, cell: (r) => r.accountId?.name ?? '—' },
     {
       key: 'amount',
       header: 'Amount',
       sortKey: 'amountPaise',
       align: 'right',
-      cell: (r) => <span className={`tabular ${r.status === 'reversed' ? 'text-muted-foreground line-through' : ''}`}>{r.type === 'credit' ? '−' : '+'}{formatINR(r.amountPaise)}</span>,
+      cell: (r) => (
+        <span className={`tabular ${r.status === 'reversed' ? 'text-muted-foreground line-through' : ''}`}>
+          {r.type === 'credit' ? '−' : '+'}
+          {formatINR(r.amountPaise)}
+        </span>
+      ),
     },
     {
       key: 'status',
@@ -345,7 +402,12 @@ export function LedgerAdjustmentPage() {
       />
       <div className="mb-4 flex flex-wrap items-center gap-2">
         <SearchInput value={lp.q} onChange={lp.setQ} placeholder="Search note number" className="w-full sm:w-60" />
-        <Select className="h-9 w-auto" value={type ?? ''} onChange={(e) => lp.setFilter('type', e.target.value || undefined)} aria-label="Type">
+        <Select
+          className="h-9 w-auto"
+          value={type ?? ''}
+          onChange={(e) => lp.setFilter('type', e.target.value || undefined)}
+          aria-label="Type"
+        >
           <option value="">Credit & debit notes</option>
           <option value="credit">Credit notes</option>
           <option value="debit">Debit notes</option>
@@ -364,11 +426,19 @@ export function LedgerAdjustmentPage() {
         onPageSizeChange={lp.setPageSize}
         sort={lp.sort}
         onSortChange={lp.setSort}
-        empty={<EmptyState title="No adjustments" description="Customer ledgers can only be corrected here, so every change is numbered, explained and reversible." />}
+        empty={
+          <EmptyState
+            title="No adjustments"
+            description="Customer ledgers can only be corrected here, so every change is numbered, explained and reversible."
+          />
+        }
       />
       <AdjustmentDialog type={creating} onClose={() => setCreating(null)} />
       <Dialog open={!!reversing} onOpenChange={(o) => !o && setReversing(null)}>
-        <DialogContent title={`Reverse ${reversing?.number ?? ''}?`} description="The journal entry is reversed and the installment schedule restored.">
+        <DialogContent
+          title={`Reverse ${reversing?.number ?? ''}?`}
+          description="The journal entry is reversed and the installment schedule restored."
+        >
           <Field label="Reason" htmlFor="adj-rev" required>
             <Textarea rows={2} value={reason} onChange={(e) => setReason(e.target.value)} />
           </Field>
@@ -414,7 +484,16 @@ function AdjustmentDialog({ type, onClose }: { type: 'credit' | 'debit' | null; 
     mutationFn: () =>
       api.post(
         '/ledger-adjustments',
-        { bookingId: booking!.id, type, reason, amountPaise: toPaise(amount), date, dueDate: dueDate || undefined, accountId: accountId || undefined, narration },
+        {
+          bookingId: booking!.id,
+          type,
+          reason,
+          amountPaise: toPaise(amount),
+          date,
+          dueDate: dueDate || undefined,
+          accountId: accountId || undefined,
+          narration,
+        },
         key.current,
       ),
     onSuccess: () => {
@@ -429,15 +508,24 @@ function AdjustmentDialog({ type, onClose }: { type: 'credit' | 'debit' | null; 
       toast.error(errorMessage(e));
     },
   });
-  const reasons = ADJUSTMENT_REASONS.filter((r) => (type === 'credit' ? ['discount', 'waiver', 'rounding', 'other'] : ['interest', 'late_fee', 'other']).includes(r));
+  const reasons = ADJUSTMENT_REASONS.filter((r) =>
+    (type === 'credit' ? ['discount', 'waiver', 'rounding', 'other'] : ['interest', 'late_fee', 'other']).includes(r),
+  );
   return (
     <Dialog open={!!type} onOpenChange={(o) => !o && onClose()}>
       <DialogContent
         title={type === 'credit' ? 'Credit note – reduce dues' : 'Debit note – add a charge'}
-        description={type === 'credit' ? 'Reduces the latest unpaid installments first.' : 'Adds a new installment to the booking’s schedule.'}
+        description={
+          type === 'credit' ? 'Reduces the latest unpaid installments first.' : 'Adds a new installment to the booking’s schedule.'
+        }
         className="max-w-xl"
       >
-        <Field label="Booking" htmlFor="adj-booking" required hint={booking && type === 'credit' ? `Up to ${formatINR(due)} can be credited` : undefined}>
+        <Field
+          label="Booking"
+          htmlFor="adj-booking"
+          required
+          hint={booking && type === 'credit' ? `Up to ${formatINR(due)} can be credited` : undefined}
+        >
           <BookingPicker id="adj-booking" value={booking} onChange={setBooking} />
         </Field>
         <div className="grid gap-4 sm:grid-cols-2">
@@ -461,11 +549,27 @@ function AdjustmentDialog({ type, onClose }: { type: 'credit' | 'debit' | null; 
               <Input type="date" value={dueDate} min={date} onChange={(e) => setDueDate(e.target.value)} />
             </Field>
           )}
-          <Field label={type === 'credit' ? 'Charge to account' : 'Income account'} htmlFor="adj-acc" hint="Leave blank for the default by reason" className="sm:col-span-2">
-            <AccountSelect id="adj-acc" value={accountId} onChange={setAccountId} types={type === 'credit' ? ['expense', 'income'] : ['income']} placeholder="Default" />
+          <Field
+            label={type === 'credit' ? 'Charge to account' : 'Income account'}
+            htmlFor="adj-acc"
+            hint="Leave blank for the default by reason"
+            className="sm:col-span-2"
+          >
+            <AccountSelect
+              id="adj-acc"
+              value={accountId}
+              onChange={setAccountId}
+              types={type === 'credit' ? ['expense', 'income'] : ['income']}
+              placeholder="Default"
+            />
           </Field>
           <Field label="Narration" htmlFor="adj-narr" required className="sm:col-span-2">
-            <Textarea rows={2} value={narration} onChange={(e) => setNarration(e.target.value)} placeholder={type === 'credit' ? 'Festive offer approved by MD' : 'Interest on delayed 2nd installment'} />
+            <Textarea
+              rows={2}
+              value={narration}
+              onChange={(e) => setNarration(e.target.value)}
+              placeholder={type === 'credit' ? 'Festive offer approved by MD' : 'Interest on delayed 2nd installment'}
+            />
           </Field>
         </div>
         <DialogFooter>
@@ -522,7 +626,10 @@ export function GstVoucherPage() {
   const to = lp.filter('to');
   const query = { ...lp.query, direction, from, to };
   const q = useQuery({ queryKey: ['gst-vouchers', query], queryFn: () => api.page<GstVoucher>('/gst-vouchers', query) });
-  const summary = useQuery({ queryKey: ['gst-vouchers', 'summary', from, to], queryFn: () => api.get<GstSummary>('/gst-vouchers/summary', { from, to }) });
+  const summary = useQuery({
+    queryKey: ['gst-vouchers', 'summary', from, to],
+    queryFn: () => api.get<GstSummary>('/gst-vouchers/summary', { from, to }),
+  });
   const [creating, setCreating] = React.useState<'output' | 'input' | null>(null);
   const [reversing, setReversing] = React.useState<GstVoucher | null>(null);
   const [reason, setReason] = React.useState('');
@@ -541,8 +648,25 @@ export function GstVoucherPage() {
   const columns: Column<GstVoucher>[] = [
     { key: 'number', header: 'Voucher', sortKey: 'number', cell: (r) => <span className="font-medium">{r.number}</span> },
     { key: 'date', header: 'Date', sortKey: 'date', cell: (r) => formatDate(r.date.slice(0, 10)) },
-    { key: 'dir', header: 'Type', cell: (r) => (r.direction === 'output' ? <Badge variant="info">Sale (output)</Badge> : <Badge variant="violet">Purchase (input)</Badge>) },
-    { key: 'party', header: 'Party / invoice', cell: (r) => <span>{r.partyName}<span className="block text-xs text-muted-foreground">{r.invoiceNumber}{r.partyGstin ? ` · ${r.partyGstin}` : ''}</span></span> },
+    {
+      key: 'dir',
+      header: 'Type',
+      cell: (r) =>
+        r.direction === 'output' ? <Badge variant="info">Sale (output)</Badge> : <Badge variant="violet">Purchase (input)</Badge>,
+    },
+    {
+      key: 'party',
+      header: 'Party / invoice',
+      cell: (r) => (
+        <span>
+          {r.partyName}
+          <span className="block text-xs text-muted-foreground">
+            {r.invoiceNumber}
+            {r.partyGstin ? ` · ${r.partyGstin}` : ''}
+          </span>
+        </span>
+      ),
+    },
     { key: 'taxable', header: 'Taxable', align: 'right', cell: (r) => <span className="tabular">{formatINR(r.taxableValuePaise)}</span> },
     {
       key: 'tax',
@@ -551,11 +675,21 @@ export function GstVoucherPage() {
       cell: (r) => (
         <span className="tabular">
           {formatINR(r.cgstPaise + r.sgstPaise + r.igstPaise)}
-          <span className="block text-xs text-muted-foreground">{r.rateBp / 100}% {r.interState ? 'IGST' : 'CGST+SGST'}</span>
+          <span className="block text-xs text-muted-foreground">
+            {r.rateBp / 100}% {r.interState ? 'IGST' : 'CGST+SGST'}
+          </span>
         </span>
       ),
     },
-    { key: 'total', header: 'Total', sortKey: 'totalPaise', align: 'right', cell: (r) => <span className={`tabular ${r.status === 'reversed' ? 'text-muted-foreground line-through' : ''}`}>{formatINR(r.totalPaise)}</span> },
+    {
+      key: 'total',
+      header: 'Total',
+      sortKey: 'totalPaise',
+      align: 'right',
+      cell: (r) => (
+        <span className={`tabular ${r.status === 'reversed' ? 'text-muted-foreground line-through' : ''}`}>{formatINR(r.totalPaise)}</span>
+      ),
+    },
     {
       key: 'actions',
       header: '',
@@ -589,8 +723,18 @@ export function GstVoucherPage() {
         }
       />
       <div className="mb-6 grid gap-4 sm:grid-cols-3">
-        <StatCard label="Output GST" value={formatINR(tax(s?.totals.output))} hint={`${s?.totals.output.count ?? 0} sales vouchers`} loading={summary.isPending} />
-        <StatCard label="Input tax credit" value={formatINR(tax(s?.totals.input))} hint={`${s?.totals.input.count ?? 0} purchase vouchers`} loading={summary.isPending} />
+        <StatCard
+          label="Output GST"
+          value={formatINR(tax(s?.totals.output))}
+          hint={`${s?.totals.output.count ?? 0} sales vouchers`}
+          loading={summary.isPending}
+        />
+        <StatCard
+          label="Input tax credit"
+          value={formatINR(tax(s?.totals.input))}
+          hint={`${s?.totals.input.count ?? 0} purchase vouchers`}
+          loading={summary.isPending}
+        />
         <StatCard
           label={(s?.netPayablePaise ?? 0) >= 0 ? 'Net GST payable' : 'Net credit carried forward'}
           value={formatINR(Math.abs(s?.netPayablePaise ?? 0))}
@@ -635,13 +779,20 @@ export function GstVoucherPage() {
                 </tr>
               </tbody>
             </table>
-            <p className="mt-2 text-xs text-muted-foreground">For filing, reconcile with GSTR-1 / GSTR-3B; cross-utilisation rules for IGST credit apply.</p>
+            <p className="mt-2 text-xs text-muted-foreground">
+              For filing, reconcile with GSTR-1 / GSTR-3B; cross-utilisation rules for IGST credit apply.
+            </p>
           </CardContent>
         </Card>
       )}
       <div className="mb-4 flex flex-wrap items-center gap-2">
         <SearchInput value={lp.q} onChange={lp.setQ} placeholder="Voucher, invoice, party, GSTIN" className="w-full sm:w-64" />
-        <Select className="h-9 w-auto" value={direction ?? ''} onChange={(e) => lp.setFilter('direction', e.target.value || undefined)} aria-label="Type">
+        <Select
+          className="h-9 w-auto"
+          value={direction ?? ''}
+          onChange={(e) => lp.setFilter('direction', e.target.value || undefined)}
+          aria-label="Type"
+        >
           <option value="">Sales & purchases</option>
           <option value="output">Sales (output)</option>
           <option value="input">Purchases (input)</option>
@@ -661,7 +812,12 @@ export function GstVoucherPage() {
         onPageSizeChange={lp.setPageSize}
         sort={lp.sort}
         onSortChange={lp.setSort}
-        empty={<EmptyState title="No GST vouchers" description="Record taxable sales (maintenance, commercial rent…) and purchases with input credit." />}
+        empty={
+          <EmptyState
+            title="No GST vouchers"
+            description="Record taxable sales (maintenance, commercial rent…) and purchases with input credit."
+          />
+        }
       />
       <GstDialog direction={creating} onClose={() => setCreating(null)} />
       <Dialog open={!!reversing} onOpenChange={(o) => !o && setReversing(null)}>
@@ -702,7 +858,23 @@ function GstDialog({ direction, onClose }: { direction: 'output' | 'input' | nul
   const key = React.useRef(newIdempotencyKey());
   React.useEffect(() => {
     if (direction) {
-      setV({ date: todayInIndia(), invoiceNumber: '', partyName: '', partyGstin: '', description: '', hsnSac: '', taxable: '', rateBp: '1800', interState: false, accountId: '', settle: 'paid', settlementAccountId: '', mode: 'neft', vendorId: '', projectId: '' });
+      setV({
+        date: todayInIndia(),
+        invoiceNumber: '',
+        partyName: '',
+        partyGstin: '',
+        description: '',
+        hsnSac: '',
+        taxable: '',
+        rateBp: '1800',
+        interState: false,
+        accountId: '',
+        settle: 'paid',
+        settlementAccountId: '',
+        mode: 'neft',
+        vendorId: '',
+        projectId: '',
+      });
       setErrors({});
       key.current = newIdempotencyKey();
     }
@@ -785,7 +957,11 @@ function GstDialog({ direction, onClose }: { direction: 'output' | 'input' | nul
             <Input className="uppercase" value={String(v.partyGstin ?? '')} onChange={(e) => set('partyGstin', e.target.value)} />
           </Field>
           <Field label="Description" htmlFor="g-desc" required className="sm:col-span-2">
-            <Input value={String(v.description ?? '')} onChange={(e) => set('description', e.target.value)} placeholder={direction === 'output' ? 'Maintenance charges – Oct 2026' : 'Cement – 400 bags'} />
+            <Input
+              value={String(v.description ?? '')}
+              onChange={(e) => set('description', e.target.value)}
+              placeholder={direction === 'output' ? 'Maintenance charges – Oct 2026' : 'Cement – 400 bags'}
+            />
           </Field>
           <Field label="HSN / SAC" htmlFor="g-hsn">
             <Input value={String(v.hsnSac ?? '')} onChange={(e) => set('hsnSac', e.target.value)} />
@@ -807,12 +983,23 @@ function GstDialog({ direction, onClose }: { direction: 'output' | 'input' | nul
             <Label htmlFor="g-inter">Inter-state (IGST)</Label>
           </div>
           <Field label={direction === 'output' ? 'Income account' : 'Expense / asset account'} htmlFor="g-acc" required>
-            <AccountSelect id="g-acc" value={String(v.accountId ?? '')} onChange={(x) => set('accountId', x)} types={direction === 'output' ? ['income'] : ['expense', 'asset']} />
+            <AccountSelect
+              id="g-acc"
+              value={String(v.accountId ?? '')}
+              onChange={(x) => set('accountId', x)}
+              types={direction === 'output' ? ['income'] : ['expense', 'asset']}
+            />
           </Field>
           {!viaVendor && (
             <>
               <Field label={direction === 'output' ? 'Received into' : 'Paid from'} htmlFor="g-settle">
-                <AccountSelect id="g-settle" value={String(v.settlementAccountId ?? '')} onChange={(x) => set('settlementAccountId', x)} cashBankOnly placeholder="Default by mode" />
+                <AccountSelect
+                  id="g-settle"
+                  value={String(v.settlementAccountId ?? '')}
+                  onChange={(x) => set('settlementAccountId', x)}
+                  cashBankOnly
+                  placeholder="Default by mode"
+                />
               </Field>
               <Field label="Mode" htmlFor="g-mode">
                 <Select value={String(v.mode ?? 'neft')} onChange={(e) => set('mode', e.target.value)}>
@@ -831,7 +1018,13 @@ function GstDialog({ direction, onClose }: { direction: 'output' | 'input' | nul
         </div>
         {t && (
           <div className="rounded-md bg-muted/50 p-3 text-sm tabular">
-            {v.interState ? <span>IGST {formatINR(t.igst)}</span> : <span>CGST {formatINR(t.cgst)} · SGST {formatINR(t.sgst)}</span>}
+            {v.interState ? (
+              <span>IGST {formatINR(t.igst)}</span>
+            ) : (
+              <span>
+                CGST {formatINR(t.cgst)} · SGST {formatINR(t.sgst)}
+              </span>
+            )}
             <span className="float-right font-semibold">Invoice total {formatINR(t.total)}</span>
           </div>
         )}

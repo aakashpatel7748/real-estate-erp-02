@@ -31,7 +31,10 @@ import { Expense, Vendor, VendorPayment, WorkOrder } from './construction.models
 
 // ---------------- Vendors ----------------
 
-export async function listVendors(ctx: TenantContext, q: { page: number; pageSize: number; q?: string; sort?: string; category?: string; includeInactive?: boolean }) {
+export async function listVendors(
+  ctx: TenantContext,
+  q: { page: number; pageSize: number; q?: string; sort?: string; category?: string; includeInactive?: boolean },
+) {
   const filter: Record<string, unknown> = { companyId: ctx.companyId };
   if (!q.includeInactive) filter.isActive = true;
   if (q.category) filter.category = q.category;
@@ -84,12 +87,27 @@ export async function getVendor(ctx: TenantContext, id: string) {
 /** Vendor statement: every payable-account line tagged with the vendor, with a running balance. */
 async function vendorLedger(ctx: TenantContext, vendorId: Types.ObjectId) {
   const payableId = await systemAccountId(ctx.companyId, 'vendor_payable');
-  const rows = await JournalEntry.aggregate<{ _id: Types.ObjectId; entryNumber: string; date: Date; narration: string; debitPaise: number; creditPaise: number }>([
+  const rows = await JournalEntry.aggregate<{
+    _id: Types.ObjectId;
+    entryNumber: string;
+    date: Date;
+    narration: string;
+    debitPaise: number;
+    creditPaise: number;
+  }>([
     { $match: { companyId: ctx.companyId, 'lines.vendorId': vendorId } },
     { $sort: { date: 1, createdAt: 1, _id: 1 } },
     { $unwind: '$lines' },
     { $match: { 'lines.vendorId': vendorId, 'lines.accountId': payableId } },
-    { $project: { entryNumber: 1, date: 1, narration: { $ifNull: ['$lines.narration', '$narration'] }, debitPaise: '$lines.debitPaise', creditPaise: '$lines.creditPaise' } },
+    {
+      $project: {
+        entryNumber: 1,
+        date: 1,
+        narration: { $ifNull: ['$lines.narration', '$narration'] },
+        debitPaise: '$lines.debitPaise',
+        creditPaise: '$lines.creditPaise',
+      },
+    },
   ]);
   let bal = 0;
   return rows.map((r) => ({ ...r, balancePaise: (bal += r.creditPaise - r.debitPaise) }));
@@ -102,7 +120,11 @@ export async function createVendor(ctx: TenantContext, input: VendorInput) {
 }
 
 export async function updateVendor(ctx: TenantContext, id: string, input: Partial<VendorInput>) {
-  const vendor = await Vendor.findOneAndUpdate({ companyId: ctx.companyId, _id: toObjectId(id) }, { $set: input }, { new: true, runValidators: true }).lean();
+  const vendor = await Vendor.findOneAndUpdate(
+    { companyId: ctx.companyId, _id: toObjectId(id) },
+    { $set: input },
+    { new: true, runValidators: true },
+  ).lean();
   if (!vendor) throw notFound('Vendor');
   await audit(ctx, { action: 'vendors.update', entityType: 'vendor', entityId: vendor._id, changes: input });
   return vendor;
@@ -112,13 +134,18 @@ export async function updateVendor(ctx: TenantContext, id: string, input: Partia
 
 async function requireProject(ctx: TenantContext, projectId: string) {
   assertProjectAccess(ctx, projectId);
-  const p = await Project.findOne({ companyId: ctx.companyId, _id: toObjectId(projectId) }).select('status').lean();
+  const p = await Project.findOne({ companyId: ctx.companyId, _id: toObjectId(projectId) })
+    .select('status')
+    .lean();
   if (!p) throw badRequest('Project not found');
   if (p.status === 'archived') throw businessRule('Project is archived');
   return p._id;
 }
 
-export async function listWorkOrders(ctx: TenantContext, q: { page: number; pageSize: number; q?: string; sort?: string; status?: string; projectId?: string; vendorId?: string }) {
+export async function listWorkOrders(
+  ctx: TenantContext,
+  q: { page: number; pageSize: number; q?: string; sort?: string; status?: string; projectId?: string; vendorId?: string },
+) {
   const filter = scopedFilter(ctx, q.projectId);
   if (q.status) filter.status = q.status;
   if (q.vendorId) filter.vendorId = toObjectId(q.vendorId);
@@ -180,7 +207,16 @@ export async function createWorkOrder(ctx: TenantContext, input: WorkOrderInput)
       ],
       { session },
     );
-    await audit(ctx, { action: 'construction.work_order_create', entityType: 'work_order', entityId: wo!._id, summary: `${number} ${vendor.name} ${formatINR(input.amountPaise)}` }, session);
+    await audit(
+      ctx,
+      {
+        action: 'construction.work_order_create',
+        entityType: 'work_order',
+        entityId: wo!._id,
+        summary: `${number} ${vendor.name} ${formatINR(input.amountPaise)}`,
+      },
+      session,
+    );
     return wo!.toJSON();
   });
 }
@@ -190,7 +226,8 @@ export async function updateWorkOrder(ctx: TenantContext, id: string, input: Par
   if (!wo) throw notFound('Work order');
   assertProjectAccess(ctx, wo.projectId);
   if (wo.status === 'completed' || wo.status === 'cancelled') throw businessRule(`A ${wo.status} work order cannot be edited`);
-  if (input.amountPaise !== undefined && input.amountPaise < wo.billedPaise) throw businessRule(`Amount cannot be below the ${formatINR(wo.billedPaise)} already billed`);
+  if (input.amountPaise !== undefined && input.amountPaise < wo.billedPaise)
+    throw businessRule(`Amount cannot be below the ${formatINR(wo.billedPaise)} already billed`);
   const { milestones, startDate, endDate, ...rest } = input;
   wo.set(rest);
   if (startDate !== undefined) wo.startDate = startDate ? parseISODate(startDate) : undefined;
@@ -198,7 +235,10 @@ export async function updateWorkOrder(ctx: TenantContext, id: string, input: Par
   if (milestones) {
     // Preserve completion of milestones that keep their name.
     const done = new Map(wo.milestones.map((m) => [m.name, m.completedAt]));
-    wo.set('milestones', milestoneDocs(milestones).map((m) => ({ ...m, completedAt: done.get(m.name) })));
+    wo.set(
+      'milestones',
+      milestoneDocs(milestones).map((m) => ({ ...m, completedAt: done.get(m.name) })),
+    );
   }
   await wo.save();
   await audit(ctx, { action: 'construction.work_order_update', entityType: 'work_order', entityId: wo._id, changes: input });
@@ -209,11 +249,17 @@ export async function changeWorkOrderStatus(ctx: TenantContext, id: string, to: 
   const wo = await WorkOrder.findOne({ companyId: ctx.companyId, _id: toObjectId(id) }).lean();
   if (!wo) throw notFound('Work order');
   assertProjectAccess(ctx, wo.projectId);
-  if (!WORK_ORDER_TRANSITIONS[wo.status as WorkOrderStatus].includes(to)) throw businessRule(`A ${wo.status} work order cannot become ${to}`);
+  if (!WORK_ORDER_TRANSITIONS[wo.status as WorkOrderStatus].includes(to))
+    throw businessRule(`A ${wo.status} work order cannot become ${to}`);
   if (to === 'cancelled' && wo.billedPaise > 0) throw businessRule('Reverse the bills on this work order before cancelling it');
   const res = await WorkOrder.updateOne({ companyId: ctx.companyId, _id: wo._id, status: wo.status }, { $set: { status: to } });
   if (res.modifiedCount !== 1) throw businessRule('Work order changed concurrently, please retry');
-  await audit(ctx, { action: 'construction.work_order_status', entityType: 'work_order', entityId: wo._id, changes: { from: wo.status, to, note } });
+  await audit(ctx, {
+    action: 'construction.work_order_status',
+    entityType: 'work_order',
+    entityId: wo._id,
+    changes: { from: wo.status, to, note },
+  });
   return { id: String(wo._id), status: to };
 }
 
@@ -226,7 +272,12 @@ export async function setMilestone(ctx: TenantContext, id: string, milestoneId: 
   if (!m) throw notFound('Milestone');
   m.completedAt = completed ? parseISODate(date ?? todayInIndia()) : undefined;
   await wo.save();
-  await audit(ctx, { action: 'construction.milestone', entityType: 'work_order', entityId: wo._id, changes: { milestone: m.name, completed } });
+  await audit(ctx, {
+    action: 'construction.milestone',
+    entityType: 'work_order',
+    entityId: wo._id,
+    changes: { milestone: m.name, completed },
+  });
   return wo.toJSON();
 }
 
@@ -234,7 +285,17 @@ export async function setMilestone(ctx: TenantContext, id: string, milestoneId: 
 
 export async function listExpenses(
   ctx: TenantContext,
-  q: { page: number; pageSize: number; q?: string; sort?: string; projectId?: string; vendorId?: string; workOrderId?: string; from?: string; to?: string },
+  q: {
+    page: number;
+    pageSize: number;
+    q?: string;
+    sort?: string;
+    projectId?: string;
+    vendorId?: string;
+    workOrderId?: string;
+    from?: string;
+    to?: string;
+  },
 ) {
   const filter: Record<string, unknown> = { companyId: ctx.companyId };
   if (q.projectId) {
@@ -260,7 +321,10 @@ export async function listExpenses(
       .populate({ path: 'workOrderId', select: 'number title', match: { companyId: ctx.companyId } })
       .lean(),
     Expense.countDocuments(filter),
-    Expense.aggregate<{ amount: number }>([{ $match: { ...filter, status: 'posted' } }, { $group: { _id: null, amount: { $sum: '$amountPaise' } } }]),
+    Expense.aggregate<{ amount: number }>([
+      { $match: { ...filter, status: 'posted' } },
+      { $group: { _id: null, amount: { $sum: '$amountPaise' } } },
+    ]),
   ]);
   return { items, meta: pageMeta(q.page, q.pageSize, total), totalPaise: totals[0]?.amount ?? 0 };
 }
@@ -278,31 +342,40 @@ export async function createExpense(ctx: TenantContext, input: ExpenseInput) {
     if (input.projectId) projectId = await requireProject(ctx, input.projectId);
     else if (ctx.projectScope !== null) throw badRequest('Choose one of your projects');
 
-    const account = await Account.findOne({ companyId: c, _id: toObjectId(input.expenseAccountId), isActive: true }).session(session).lean();
+    const account = await Account.findOne({ companyId: c, _id: toObjectId(input.expenseAccountId), isActive: true })
+      .session(session)
+      .lean();
     const capitalised = account?.systemKey === 'land_inventory';
     if (!account || (account.type !== 'expense' && !capitalised)) throw badRequest('Choose an expense account (or Land & Development WIP)');
-    if (account.systemKey && (CONTROL_ACCOUNT_KEYS as string[]).includes(account.systemKey)) throw badRequest('Control accounts cannot be used here');
+    if (account.systemKey && (CONTROL_ACCOUNT_KEYS as string[]).includes(account.systemKey))
+      throw badRequest('Control accounts cannot be used here');
 
     let vendorId: Types.ObjectId | undefined;
     if (input.vendorId) {
-      const vendor = await Vendor.findOne({ companyId: c, _id: toObjectId(input.vendorId) }).session(session).lean();
+      const vendor = await Vendor.findOne({ companyId: c, _id: toObjectId(input.vendorId) })
+        .session(session)
+        .lean();
       if (!vendor) throw badRequest('Vendor not found');
       vendorId = vendor._id;
     }
 
     let workOrder: { _id: Types.ObjectId; number: string } | undefined;
     if (input.workOrderId) {
-      const wo = await WorkOrder.findOne({ companyId: c, _id: toObjectId(input.workOrderId) }).session(session).lean();
+      const wo = await WorkOrder.findOne({ companyId: c, _id: toObjectId(input.workOrderId) })
+        .session(session)
+        .lean();
       if (!wo) throw badRequest('Work order not found');
       if (!projectId || String(wo.projectId) !== String(projectId)) throw badRequest('The work order belongs to a different project');
       if (!vendorId || String(wo.vendorId) !== String(vendorId)) throw badRequest('The work order belongs to a different vendor');
-      if (!['issued', 'in_progress', 'completed'].includes(wo.status)) throw businessRule(`Bills cannot be booked against a ${wo.status} work order`);
+      if (!['issued', 'in_progress', 'completed'].includes(wo.status))
+        throw businessRule(`Bills cannot be booked against a ${wo.status} work order`);
       const upd = await WorkOrder.updateOne(
         { companyId: c, _id: wo._id, billedPaise: { $lte: wo.amountPaise - input.amountPaise } },
         { $inc: { billedPaise: input.amountPaise } },
         { session },
       );
-      if (upd.modifiedCount !== 1) throw businessRule(`Bill exceeds the remaining ${formatINR(wo.amountPaise - wo.billedPaise)} on ${wo.number}`);
+      if (upd.modifiedCount !== 1)
+        throw businessRule(`Bill exceeds the remaining ${formatINR(wo.amountPaise - wo.billedPaise)} on ${wo.number}`);
       workOrder = { _id: wo._id, number: wo.number };
     }
 
@@ -310,8 +383,16 @@ export async function createExpense(ctx: TenantContext, input: ExpenseInput) {
     const expenseId = new Types.ObjectId();
     const credit =
       input.settlement === 'paid'
-        ? { accountId: await resolveCashAccountFor(c, input.paidFromAccountId, input.mode ?? 'neft', session), creditPaise: input.amountPaise }
-        : { systemKey: 'vendor_payable' as const, creditPaise: input.amountPaise, vendorId, narration: input.billNumber ? `Bill ${input.billNumber}` : undefined };
+        ? {
+            accountId: await resolveCashAccountFor(c, input.paidFromAccountId, input.mode ?? 'neft', session),
+            creditPaise: input.amountPaise,
+          }
+        : {
+            systemKey: 'vendor_payable' as const,
+            creditPaise: input.amountPaise,
+            vendorId,
+            narration: input.billNumber ? `Bill ${input.billNumber}` : undefined,
+          };
     const je = await postJournal(
       ctx,
       {
@@ -349,14 +430,25 @@ export async function createExpense(ctx: TenantContext, input: ExpenseInput) {
       ],
       { session },
     );
-    await audit(ctx, { action: 'expenses.create', entityType: 'expense', entityId: expenseId, summary: `${number} ${formatINR(input.amountPaise)} ${input.description}` }, session);
+    await audit(
+      ctx,
+      {
+        action: 'expenses.create',
+        entityType: 'expense',
+        entityId: expenseId,
+        summary: `${number} ${formatINR(input.amountPaise)} ${input.description}`,
+      },
+      session,
+    );
     return expense!.toJSON();
   });
 }
 
 export async function reverseExpense(ctx: TenantContext, id: string, reason: string) {
   return withTransaction(async (session) => {
-    const exp = await Expense.findOne({ companyId: ctx.companyId, _id: toObjectId(id) }).session(session).lean();
+    const exp = await Expense.findOne({ companyId: ctx.companyId, _id: toObjectId(id) })
+      .session(session)
+      .lean();
     if (!exp) throw notFound('Expense');
     if (exp.projectId) assertProjectAccess(ctx, exp.projectId);
     if (exp.status !== 'posted') throw businessRule('This expense has already been reversed');
@@ -372,8 +464,17 @@ export async function reverseExpense(ctx: TenantContext, id: string, reason: str
       { session },
     );
     if (res.modifiedCount !== 1) throw businessRule('This expense has already been reversed');
-    if (exp.workOrderId) await WorkOrder.updateOne({ companyId: ctx.companyId, _id: exp.workOrderId }, { $inc: { billedPaise: -exp.amountPaise } }, { session });
-    await audit(ctx, { action: 'expenses.reverse', entityType: 'expense', entityId: exp._id, summary: exp.number, changes: { reason } }, session);
+    if (exp.workOrderId)
+      await WorkOrder.updateOne(
+        { companyId: ctx.companyId, _id: exp.workOrderId },
+        { $inc: { billedPaise: -exp.amountPaise } },
+        { session },
+      );
+    await audit(
+      ctx,
+      { action: 'expenses.reverse', entityType: 'expense', entityId: exp._id, summary: exp.number, changes: { reason } },
+      session,
+    );
     return { id: String(exp._id), status: 'reversed' as const };
   });
 }
@@ -381,7 +482,9 @@ export async function reverseExpense(ctx: TenantContext, id: string, reason: str
 /** Pays a vendor against their payable balance (Dr Vendor Payables, Cr cash/bank). */
 export async function payVendor(ctx: TenantContext, vendorId: string, input: VendorPaymentInput) {
   return withTransaction(async (session) => {
-    const vendor = await Vendor.findOne({ companyId: ctx.companyId, _id: toObjectId(vendorId) }).session(session).lean();
+    const vendor = await Vendor.findOne({ companyId: ctx.companyId, _id: toObjectId(vendorId) })
+      .session(session)
+      .lean();
     if (!vendor) throw notFound('Vendor');
     let projectId: Types.ObjectId | undefined;
     if (input.projectId) projectId = await requireProject(ctx, input.projectId);
@@ -427,7 +530,11 @@ export async function payVendor(ctx: TenantContext, vendorId: string, input: Ven
       ],
       { session },
     );
-    await audit(ctx, { action: 'vendors.payment', entityType: 'vendor', entityId: vendor._id, summary: `${number} ${formatINR(input.amountPaise)}` }, session);
+    await audit(
+      ctx,
+      { action: 'vendors.payment', entityType: 'vendor', entityId: vendor._id, summary: `${number} ${formatINR(input.amountPaise)}` },
+      session,
+    );
     return payment!.toJSON();
   });
 }
@@ -457,14 +564,22 @@ export async function projectCosts(ctx: TenantContext, projectId?: string) {
       { $group: { _id: '$projectId', amount: { $sum: '$amountPaise' } } },
     ]),
   ]);
-  const accounts = await Account.find({ companyId: ctx.companyId, _id: { $in: byAccount.map((a) => a._id) } }).select('code name').lean();
-  const projects = await Project.find({ companyId: ctx.companyId, _id: { $in: byProject.map((p) => p._id).filter(Boolean) } }).select('name code').lean();
+  const accounts = await Account.find({ companyId: ctx.companyId, _id: { $in: byAccount.map((a) => a._id) } })
+    .select('code name')
+    .lean();
+  const projects = await Project.find({ companyId: ctx.companyId, _id: { $in: byProject.map((p) => p._id).filter(Boolean) } })
+    .select('name code')
+    .lean();
   return {
     landPaidPaise: land[0]?.amount ?? 0,
     workOrders: { committedPaise: orders[0]?.committed ?? 0, billedPaise: orders[0]?.billed ?? 0, open: orders[0]?.open ?? 0 },
     expensesPaise: byAccount.reduce((s, a) => s + a.amount, 0),
     byAccount: byAccount
-      .map((a) => ({ accountId: String(a._id), ...(accounts.find((x) => String(x._id) === String(a._id)) ?? { code: '', name: 'Unknown' }), amountPaise: a.amount }))
+      .map((a) => ({
+        accountId: String(a._id),
+        ...(accounts.find((x) => String(x._id) === String(a._id)) ?? { code: '', name: 'Unknown' }),
+        amountPaise: a.amount,
+      }))
       .sort((x, y) => y.amountPaise - x.amountPaise),
     byProject: byProject.map((p) => ({
       projectId: p._id ? String(p._id) : null,

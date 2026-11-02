@@ -67,11 +67,22 @@ export function PartiesPage() {
         { key: 'kind', header: 'Type', sortKey: 'kind', cell: (r) => titleCase(r.kind) },
         { key: 'phone', header: 'Phone', cell: (r) => r.phone ?? '—' },
         { key: 'share', header: 'Share', align: 'right', cell: (r) => (r.shareBp ? `${r.shareBp / 100}%` : '—') },
-        { key: 'contrib', header: 'Contribution', align: 'right', hideOnMobile: true, cell: (r) => (r.contributionPaise ? formatINR(r.contributionPaise) : '—') },
+        {
+          key: 'contrib',
+          header: 'Contribution',
+          align: 'right',
+          hideOnMobile: true,
+          cell: (r) => (r.contributionPaise ? formatINR(r.contributionPaise) : '—'),
+        },
         { key: 'projects', header: 'Projects', hideOnMobile: true, cell: (r) => r.projectIds?.map((p) => p.name).join(', ') || '—' },
         { key: 'active', header: 'Status', cell: (r) => <Active on={r.isActive} /> },
       ]}
-      empty={<EmptyState title="No owners or partners yet" description="Record land owners, partners and investors with their shares and bank details." />}
+      empty={
+        <EmptyState
+          title="No owners or partners yet"
+          description="Record land owners, partners and investors with their shares and bank details."
+        />
+      }
     />
   );
 }
@@ -110,7 +121,9 @@ function FinancedBookings({ id }: { id: string }) {
     <div>
       <h3 className="mb-2 text-sm font-semibold">Home loans through this lender ({rows.length})</h3>
       {!rows.length ? (
-        <p className="text-sm text-muted-foreground">{q.isPending ? 'Loading…' : 'No bookings financed yet. Set the lender on a booking’s Home loan card.'}</p>
+        <p className="text-sm text-muted-foreground">
+          {q.isPending ? 'Loading…' : 'No bookings financed yet. Set the lender on a booking’s Home loan card.'}
+        </p>
       ) : (
         <ul className="divide-y rounded-md border text-sm">
           {rows.map((b) => (
@@ -139,11 +152,29 @@ export function FinancersPage() {
       entityLabel="lender"
       sort="name"
       defaults={{ type: 'bank', isActive: true }}
-      filters={[{ key: 'type', label: 'Type', options: FINANCER_TYPES.map((t) => ({ value: t, label: t === 'hfc' ? 'Housing finance co.' : t === 'nbfc' ? 'NBFC' : titleCase(t) })) }]}
+      filters={[
+        {
+          key: 'type',
+          label: 'Type',
+          options: FINANCER_TYPES.map((t) => ({
+            value: t,
+            label: t === 'hfc' ? 'Housing finance co.' : t === 'nbfc' ? 'NBFC' : titleCase(t),
+          })),
+        },
+      ]}
       permissions={{ create: 'masters.create', update: 'masters.update', delete: 'masters.delete' }}
       fields={[
         { name: 'name', label: 'Lender name', type: 'text', required: true, placeholder: 'State Bank of India' },
-        { name: 'type', label: 'Type', type: 'select', required: true, options: FINANCER_TYPES.map((t) => ({ value: t, label: t === 'hfc' ? 'Housing finance co.' : t === 'nbfc' ? 'NBFC' : titleCase(t) })) },
+        {
+          name: 'type',
+          label: 'Type',
+          type: 'select',
+          required: true,
+          options: FINANCER_TYPES.map((t) => ({
+            value: t,
+            label: t === 'hfc' ? 'Housing finance co.' : t === 'nbfc' ? 'NBFC' : titleCase(t),
+          })),
+        },
         { name: 'branch', label: 'Branch', type: 'text' },
         { name: 'contactPerson', label: 'Contact person', type: 'text' },
         { name: 'phone', label: 'Phone', type: 'tel' },
@@ -157,9 +188,19 @@ export function FinancersPage() {
         { key: 'name', header: 'Lender', sortKey: 'name', cell: (r) => <span className="font-medium">{r.name}</span> },
         { key: 'type', header: 'Type', cell: (r) => (r.type === 'hfc' ? 'HFC' : r.type === 'nbfc' ? 'NBFC' : titleCase(r.type)) },
         { key: 'branch', header: 'Branch / contact', cell: (r) => [r.branch, r.contactPerson, r.phone].filter(Boolean).join(' · ') || '—' },
-        { key: 'apf', header: 'Approved projects', hideOnMobile: true, cell: (r) => r.approvedProjectIds?.map((p) => p.name).join(', ') || '—' },
+        {
+          key: 'apf',
+          header: 'Approved projects',
+          hideOnMobile: true,
+          cell: (r) => r.approvedProjectIds?.map((p) => p.name).join(', ') || '—',
+        },
         { key: 'loans', header: 'Active loans', align: 'right', cell: (r) => r.loans ?? 0 },
-        { key: 'sanctioned', header: 'Sanctioned', align: 'right', cell: (r) => <span className="tabular">{formatINR(r.sanctionedPaise ?? 0)}</span> },
+        {
+          key: 'sanctioned',
+          header: 'Sanctioned',
+          align: 'right',
+          cell: (r) => <span className="tabular">{formatINR(r.sanctionedPaise ?? 0)}</span>,
+        },
         { key: 'active', header: 'Status', cell: (r) => <Active on={r.isActive} /> },
       ]}
       renderDetail={(r) => <FinancedBookings id={r.id} />}
@@ -213,7 +254,9 @@ export function ConsultantsPage() {
         { key: 'fee', header: 'Fees', hideOnMobile: true, cell: (r) => r.feeNote ?? '—' },
         { key: 'active', header: 'Status', cell: (r) => <Active on={r.isActive} /> },
       ]}
-      empty={<EmptyState title="No consultants yet" description="Add registry agents and advocates; registries can then be assigned to them." />}
+      empty={
+        <EmptyState title="No consultants yet" description="Add registry agents and advocates; registries can then be assigned to them." />
+      }
     />
   );
 }
@@ -253,14 +296,23 @@ export function ChargesPage() {
       permissions={{ create: 'masters.create', update: 'masters.update', delete: 'masters.delete' }}
       fields={[
         { name: 'name', label: 'Charge name', type: 'text', required: true, placeholder: 'Club membership' },
-        { name: 'kind', label: 'Type', type: 'select', required: true, options: CHARGE_KINDS.map((k) => ({ value: k, label: k === 'plc' ? 'PLC' : titleCase(k) })) },
+        {
+          name: 'kind',
+          label: 'Type',
+          type: 'select',
+          required: true,
+          options: CHARGE_KINDS.map((k) => ({ value: k, label: k === 'plc' ? 'PLC' : titleCase(k) })),
+        },
         { name: 'projectId', label: 'Project', type: 'project', allowAll: 'All projects' },
         {
           name: 'basis',
           label: 'Charged as',
           type: 'select',
           required: true,
-          options: CHARGE_BASES.map((b) => ({ value: b, label: b === 'fixed' ? 'Fixed per unit' : b === 'per_sqft' ? 'Per sq ft' : '% of unit value' })),
+          options: CHARGE_BASES.map((b) => ({
+            value: b,
+            label: b === 'fixed' ? 'Fixed per unit' : b === 'per_sqft' ? 'Per sq ft' : '% of unit value',
+          })),
         },
         { name: '_amount', label: 'Amount', type: 'money', when: (v) => v.basis !== 'percent', required: true },
         { name: '_percent', label: 'Percentage', type: 'percent', when: (v) => v.basis === 'percent', required: true },
@@ -286,11 +338,20 @@ export function ChargesPage() {
         { key: 'value', header: 'Rate', cell: (r) => chargeValueLabel(r) },
         { key: 'gst', header: 'GST', align: 'right', cell: (r) => (r.gstBp ? `${r.gstBp / 100}%` : '—') },
         { key: 'project', header: 'Project', cell: (r) => r.projectId?.name ?? 'All projects' },
-        { key: 'mandatory', header: 'Auto-add', cell: (r) => (r.isMandatory ? <Badge variant="info">Mandatory</Badge> : <span className="text-muted-foreground">Optional</span>) },
+        {
+          key: 'mandatory',
+          header: 'Auto-add',
+          cell: (r) => (r.isMandatory ? <Badge variant="info">Mandatory</Badge> : <span className="text-muted-foreground">Optional</span>),
+        },
         { key: 'active', header: 'Status', cell: (r) => <Active on={r.isActive} /> },
         { key: 'created', header: 'Added', hideOnMobile: true, cell: (r) => formatDate(r.createdAt) },
       ]}
-      empty={<EmptyState title="No charges yet" description="Add PLC, club, maintenance, legal and other charges once; pick them on every quotation and booking." />}
+      empty={
+        <EmptyState
+          title="No charges yet"
+          description="Add PLC, club, maintenance, legal and other charges once; pick them on every quotation and booking."
+        />
+      }
     />
   );
 }

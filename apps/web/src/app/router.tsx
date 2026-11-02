@@ -40,10 +40,11 @@ const JournalEntryPage = lazy(() => import('@/features/accounting/accounting-pag
 const UsersPage = lazy(() => import('@/features/admin/admin-pages'), 'UsersPage');
 const RolesPage = lazy(() => import('@/features/admin/admin-pages'), 'RolesPage');
 const AuditPage = lazy(() => import('@/features/admin/admin-pages'), 'AuditPage');
-const CompanySettingsPage = lazyWith<{ section: 'profile' | 'settings' }, typeof import('@/features/admin/admin-pages'), 'CompanySettingsPage'>(
-  () => import('@/features/admin/admin-pages'),
-  'CompanySettingsPage',
-);
+const CompanySettingsPage = lazyWith<
+  { section: 'profile' | 'settings' },
+  typeof import('@/features/admin/admin-pages'),
+  'CompanySettingsPage'
+>(() => import('@/features/admin/admin-pages'), 'CompanySettingsPage');
 const AccountPage = lazy(() => import('@/features/admin/admin-pages'), 'AccountPage');
 const LandPage = lazy(() => import('@/features/land/land-pages'), 'LandPage');
 const LandDetailPage = lazy(() => import('@/features/land/land-pages'), 'LandDetailPage');
@@ -231,7 +232,14 @@ export const router = createBrowserRouter([
   {
     element: <RequireAuth />,
     children: [
-      { index: true, element: <Guard permission="dashboard.read"><DashboardPage /></Guard> },
+      {
+        index: true,
+        element: (
+          <Guard permission="dashboard.read">
+            <DashboardPage />
+          </Guard>
+        ),
+      },
 
       // ---------------- Administration ----------------
       page('administration/company', 'company.read', <CompanySettingsPage section="profile" />),

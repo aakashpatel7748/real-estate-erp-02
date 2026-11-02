@@ -59,7 +59,10 @@ export function ParkingPage() {
   const type = lp.filter('type');
   const query = { ...lp.query, projectId: projectId ?? undefined, status, type };
   const q = useQuery({ queryKey: ['parking', query], queryFn: () => api.page<Slot>('/parking', query) });
-  const summary = useQuery({ queryKey: ['parking', 'summary', projectId], queryFn: () => api.get<Summary>('/parking/summary', { projectId: projectId ?? undefined }) });
+  const summary = useQuery({
+    queryKey: ['parking', 'summary', projectId],
+    queryFn: () => api.get<Summary>('/parking/summary', { projectId: projectId ?? undefined }),
+  });
   const [create, setCreate] = React.useState<'one' | 'bulk' | null>(null);
   const [allot, setAllot] = React.useState<Slot | null>(null);
   const [action, setAction] = React.useState<{ slot: Slot; kind: 'release' | 'block' | 'unblock' | 'delete' } | null>(null);
@@ -85,7 +88,13 @@ export function ParkingPage() {
     { key: 'project', header: 'Project', cell: (s) => s.projectId?.name ?? '—' },
     { key: 'where', header: 'Tower / level', cell: (s) => [s.blockId?.name, s.level].filter(Boolean).join(' · ') || '—' },
     { key: 'type', header: 'Type', sortKey: 'type', cell: (s) => titleCase(s.type) },
-    { key: 'price', header: 'Price', sortKey: 'pricePaise', align: 'right', cell: (s) => <span className="tabular">{s.pricePaise ? formatINR(s.pricePaise) : '—'}</span> },
+    {
+      key: 'price',
+      header: 'Price',
+      sortKey: 'pricePaise',
+      align: 'right',
+      cell: (s) => <span className="tabular">{s.pricePaise ? formatINR(s.pricePaise) : '—'}</span>,
+    },
     { key: 'status', header: 'Status', sortKey: 'status', cell: (s) => <Badge variant={VARIANT[s.status]}>{titleCase(s.status)}</Badge> },
     {
       key: 'booking',
@@ -93,7 +102,11 @@ export function ParkingPage() {
       cell: (s) =>
         s.bookingId ? (
           <span>
-            <Link to={`/post-sales/bookings/${s.bookingId.id}`} className="font-medium text-primary hover:underline" onClick={(e) => e.stopPropagation()}>
+            <Link
+              to={`/post-sales/bookings/${s.bookingId.id}`}
+              className="font-medium text-primary hover:underline"
+              onClick={(e) => e.stopPropagation()}
+            >
               {s.bookingId.bookingNumber}
             </Link>{' '}
             <span className="text-muted-foreground">{s.customerId?.name}</span>
@@ -165,7 +178,12 @@ export function ParkingPage() {
       </div>
       <div className="mb-4 flex flex-wrap items-center gap-2">
         <SearchInput value={lp.q} onChange={lp.setQ} placeholder="Search slot code" className="w-full sm:w-64" />
-        <Select className="h-9 w-auto" value={status ?? ''} onChange={(e) => lp.setFilter('status', e.target.value || undefined)} aria-label="Status">
+        <Select
+          className="h-9 w-auto"
+          value={status ?? ''}
+          onChange={(e) => lp.setFilter('status', e.target.value || undefined)}
+          aria-label="Status"
+        >
           <option value="">All statuses</option>
           {PARKING_STATUSES.map((s) => (
             <option key={s} value={s}>
@@ -173,7 +191,12 @@ export function ParkingPage() {
             </option>
           ))}
         </Select>
-        <Select className="h-9 w-auto" value={type ?? ''} onChange={(e) => lp.setFilter('type', e.target.value || undefined)} aria-label="Type">
+        <Select
+          className="h-9 w-auto"
+          value={type ?? ''}
+          onChange={(e) => lp.setFilter('type', e.target.value || undefined)}
+          aria-label="Type"
+        >
           <option value="">All types</option>
           {PARKING_TYPES.map((s) => (
             <option key={s} value={s}>
@@ -240,14 +263,30 @@ function CreateParkingDialog({ mode, onClose }: { mode: 'one' | 'bulk' | null; o
   const [errors, setErrors] = React.useState<Record<string, string>>({});
   React.useEffect(() => {
     if (mode) {
-      setValues({ projectId: projectId ?? '', type: 'covered', code: '', prefix: 'P-', startNumber: '1', count: '20', price: '', level: '', blockId: '' });
+      setValues({
+        projectId: projectId ?? '',
+        type: 'covered',
+        code: '',
+        prefix: 'P-',
+        startNumber: '1',
+        count: '20',
+        price: '',
+        level: '',
+        blockId: '',
+      });
       setErrors({});
     }
   }, [mode, projectId]);
   const blocks = useBlocks(String(values.projectId ?? ''));
   const fields: FieldDef[] = [
     { name: 'projectId', label: 'Project', type: 'project', required: true },
-    { name: 'blockId', label: 'Tower / block', type: 'select', options: (blocks.data ?? []).map((b) => ({ value: b.id, label: b.name })), emptyLabel: 'None' },
+    {
+      name: 'blockId',
+      label: 'Tower / block',
+      type: 'select',
+      options: (blocks.data ?? []).map((b) => ({ value: b.id, label: b.name })),
+      emptyLabel: 'None',
+    },
     ...(mode === 'bulk'
       ? ([
           { name: 'prefix', label: 'Code prefix', type: 'upper' },
@@ -269,7 +308,12 @@ function CreateParkingDialog({ mode, onClose }: { mode: 'one' | 'bulk' | null; o
         pricePaise: values.price ? toPaise(String(values.price)) : 0,
       };
       return mode === 'bulk'
-        ? api.post<{ created: number }>('/parking/bulk', { ...base, prefix: String(values.prefix ?? '').toUpperCase(), startNumber: Number(values.startNumber), count: Number(values.count) })
+        ? api.post<{ created: number }>('/parking/bulk', {
+            ...base,
+            prefix: String(values.prefix ?? '').toUpperCase(),
+            startNumber: Number(values.startNumber),
+            count: Number(values.count),
+          })
         : api.post('/parking', { ...base, code: String(values.code).toUpperCase() });
     },
     onSuccess: (r) => {
@@ -282,7 +326,10 @@ function CreateParkingDialog({ mode, onClose }: { mode: 'one' | 'bulk' | null; o
       toast.error(errorMessage(e));
     },
   });
-  const preview = mode === 'bulk' && Number(values.count) > 0 ? `${String(values.prefix ?? '').toUpperCase()}${values.startNumber} … ${String(values.prefix ?? '').toUpperCase()}${Number(values.startNumber) + Number(values.count) - 1}` : '';
+  const preview =
+    mode === 'bulk' && Number(values.count) > 0
+      ? `${String(values.prefix ?? '').toUpperCase()}${values.startNumber} … ${String(values.prefix ?? '').toUpperCase()}${Number(values.startNumber) + Number(values.count) - 1}`
+      : '';
   return (
     <Dialog open={!!mode} onOpenChange={(o) => !o && onClose()}>
       <DialogContent title={mode === 'bulk' ? 'Add parking slots in bulk' : 'New parking slot'} className="max-w-xl">
@@ -316,11 +363,18 @@ function AllotDialog({ slot, onClose }: { slot: Slot | null; onClose: () => void
   });
   return (
     <Dialog open={!!slot} onOpenChange={(o) => !o && onClose()}>
-      <DialogContent title={`Allot ${slot?.code ?? ''}`} description={`${slot?.projectId?.name ?? ''} · ${titleCase(slot?.type ?? '')}${slot?.pricePaise ? ` · ${formatINR(slot.pricePaise)}` : ''}`}>
+      <DialogContent
+        title={`Allot ${slot?.code ?? ''}`}
+        description={`${slot?.projectId?.name ?? ''} · ${titleCase(slot?.type ?? '')}${slot?.pricePaise ? ` · ${formatINR(slot.pricePaise)}` : ''}`}
+      >
         <Field label="Booking" htmlFor="pk-booking" required hint="Only bookings in the same project can be chosen">
           <BookingPicker id="pk-booking" value={booking} onChange={setBooking} projectId={slot?.projectId?.id} />
         </Field>
-        {slot?.pricePaise ? <p className="text-xs text-muted-foreground">If parking is chargeable, add it to the booking’s charges or raise a debit note in Ledger Adjustment.</p> : null}
+        {slot?.pricePaise ? (
+          <p className="text-xs text-muted-foreground">
+            If parking is chargeable, add it to the booking’s charges or raise a debit note in Ledger Adjustment.
+          </p>
+        ) : null}
         <DialogFooter>
           <Button variant="outline" onClick={onClose}>
             Cancel
@@ -333,4 +387,3 @@ function AllotDialog({ slot, onClose }: { slot: Slot | null; onClose: () => void
     </Dialog>
   );
 }
-

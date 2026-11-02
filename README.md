@@ -8,7 +8,7 @@ The workflows are modelled on the kind of features colony-management software is
 
 ---
 
-## Status: Phases 1 and 2 are complete
+## Status: Phases 1–3 are complete
 
 | Area | Status |
 | --- | --- |
@@ -30,7 +30,20 @@ The workflows are modelled on the kind of features colony-management software is
 | **Phase 2:** Broker commissions accrued on booking confirmation, cancelled with the booking, settled by payouts | ✅ |
 | **Phase 2:** Construction: vendors with payable ledgers, work orders with milestones, vendor bills (never above the order), vendor payments, expenses, project cost summary | ✅ |
 | **Phase 2:** Documents: private storage (local disk or S3), type/size/magic-byte validation, short-lived signed view/download links, attachments on projects, parcels, customers, bookings, leads, vendors and work orders | ✅ |
-| Phase 3 enhancements | ⏳ See [docs/roadmap.md](docs/roadmap.md) |
+| **Phase 3:** Builder/developer menu – Administration, Master, Pre Sales, Post Sales, Account (see below) | ✅ |
+| Further enhancements | ⏳ See [docs/roadmap.md](docs/roadmap.md) |
+
+### Menu (Phase 3)
+
+| Section | Screens |
+| --- | --- |
+| Administration | Company Profile · Projects · Phases / Towers · Bank & Cash Accounts · Rate & Price Indexes (+ payment plans) · Settings · Roles & Permissions (+ users) · Activity Log |
+| Master | Land Owners & Partners (+ land acquisition) · Channel Partners (Brokers) · Vendors & Contractors (+ work orders, expenses) · Banks & Home Loan Financers · Registry & Legal Consultants · Units / Inventory (plots, flats, villas, shops; + layout map) · Parking Slots · Other Charges (PLC, Club, Maintenance) |
+| Pre Sales | Sales Dashboard · Leads & Enquiries · Lead Stages & Sources · WhatsApp Templates (click-to-chat, logged) · Portal Integrations (secret webhook per channel: 99acres, MagicBricks, Housing, Facebook, website) · Cost Sheets & Quotations (PDF, convert to booking) |
+| Post Sales | Customers / Buyers · Unit Bookings · Booking Cancellations · Builder Buyer Agreements · Allotment Letters · Sale Deed Registry · Payment Demand Letters (single or whole project) · Possession Letters · Dues & Collection Follow-Ups (aging, promises, reminders) |
+| Account | Post-Dated Cheques (receipt on clearance) · Vendor & Contractor Payments · Customer Receipts · Ledger Adjustment (credit / debit notes) · Journal Voucher (+ reports) · GST Voucher (CGST/SGST/IGST, net payable) |
+
+The sidebar lives in `apps/web/src/layouts/nav.ts`. Old URLs (e.g. `/bookings`, `/crm`) redirect to their new place.
 
 ## Quick start
 

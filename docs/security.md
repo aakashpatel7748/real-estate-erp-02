@@ -17,7 +17,8 @@
 | Audit | Append-only audit log for auth events, bookings, payments, reversals, refunds, role and permission changes, membership changes and inventory status changes. Each record carries the actor, IP, user agent and request ID |
 | File uploads | Multipart through the API (memory buffer, `MAX_UPLOAD_MB` cap → 413). Only PDF, PNG, JPEG, WebP, DOCX and XLSX are accepted, and the file's **magic bytes** must match the declared type. Storage keys are server-generated (`companyId/entity/random`), never derived from the filename. The local driver rejects path traversal |
 | File downloads | Files are never public. `GET /documents/:id/url` re-checks tenant, permission and project/lead visibility, audits the access and returns a link valid for `FILE_URL_TTL_SECONDS` (default 300). Local links are HMAC-SHA256 tokens bound to the key, filename, type, disposition and expiry; S3 links are presigned GETs. The file route sends `nosniff`, a `sandbox` CSP, `no-store` and an RFC 6266 `Content-Disposition`. The storage key is `select:false` and never reaches the client |
-| Ledger control accounts | Receivables, advances, refunds, vendor and broker payables can only be posted by their workflows. Manual vouchers are refused, so party balances always match their sub-ledgers |
+| Inbound lead webhook | Public by design. A 32-byte random token per channel (rotatable) identifies the company; unknown tokens return 404 without detail. Rate limited, 100 kB form limit, payloads truncated in logs, and only lead fields are written (no other records). |
+| Ledger control accounts | Receivables, advances, refunds, vendor and broker payables can only be posted by their workflows (credit/debit notes go through Ledger Adjustment, which is permissioned and reversible). Manual vouchers are refused, so party balances always match their sub-ledgers |
 
 ## Production checklist
 

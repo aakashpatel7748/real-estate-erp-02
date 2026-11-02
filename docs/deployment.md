@@ -19,6 +19,7 @@
      node apps/api/dist/scripts/sync-indexes.js
    ```
    The unique indexes (plot numbers, receipt numbers, one active booking per plot, idempotency keys) are part of the integrity guarantees, so do not skip this step.
+   The same script adds permissions introduced in later releases (Phase 3: masters, quotations, post-sales, collections, PDC, ledger adjustment) to existing companies' system roles; custom roles are left alone.
 3. **API.** Build `docker build -f apps/api/Dockerfile -t erp-api .` and set these env vars (see `.env.example`):
    `NODE_ENV=production`, `MONGODB_URI`, `JWT_ACCESS_SECRET`, `APP_URL`, `CORS_ORIGINS`, `TRUST_PROXY`, `SMTP_URL`, `MAIL_FROM`.
    For documents, set `STORAGE_DRIVER=s3`, `S3_BUCKET`, `S3_REGION` and credentials (or an IAM role), plus `S3_ENDPOINT` / `S3_FORCE_PATH_STYLE=true` for R2 or MinIO. With the local driver, mount a persistent volume at `STORAGE_LOCAL_DIR` (the image prepares `/app/.data/uploads`) and run a single API replica, or share the volume. `MAX_UPLOAD_MB` (default 15) must stay below the proxy's body limit (`client_max_body_size 16m` in `deploy/nginx.conf`).

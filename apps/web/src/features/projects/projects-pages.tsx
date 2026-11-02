@@ -275,7 +275,11 @@ export function ProjectsPage() {
       ) : (
         <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
           {q.data.items.map((p) => (
-            <Link key={p.id} to={`/administration/projects/${p.id}`} className="group rounded-xl focus-visible:outline-2 focus-visible:outline-ring">
+            <Link
+              key={p.id}
+              to={`/administration/projects/${p.id}`}
+              className="group rounded-xl focus-visible:outline-2 focus-visible:outline-ring"
+            >
               <Card className="h-full p-5 transition-shadow group-hover:shadow-md">
                 <div className="flex items-start justify-between gap-2">
                   <div className="min-w-0">

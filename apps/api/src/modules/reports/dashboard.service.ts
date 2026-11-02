@@ -155,7 +155,8 @@ export async function getDashboard(ctx: TenantContext, projectId?: string) {
   if (hasPermission(ctx, 'crm.read')) {
     const leadMatch: Record<string, unknown> = { companyId: ctx.companyId, deletedAt: null };
     if (base.projectId) leadMatch.projectId = base.projectId;
-    if (ctx.projectScope !== null && !base.projectId) leadMatch.$or = [{ projectId: { $in: ctx.projectScope } }, { assignedTo: ctx.userId }];
+    if (ctx.projectScope !== null && !base.projectId)
+      leadMatch.$or = [{ projectId: { $in: ctx.projectScope } }, { assignedTo: ctx.userId }];
     const [open, due, won] = await Promise.all([
       Lead.countDocuments({ ...leadMatch, status: { $in: OPEN_LEAD_STATUSES } }),
       Lead.countDocuments({ ...leadMatch, status: { $in: OPEN_LEAD_STATUSES }, nextFollowUpAt: { $lte: new Date() } }),

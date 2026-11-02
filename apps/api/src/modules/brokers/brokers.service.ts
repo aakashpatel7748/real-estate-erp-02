@@ -27,7 +27,12 @@ export async function listBrokers(ctx: TenantContext, q?: string, includeInactiv
   return brokers.map((b) => {
     const mine = sums.filter((s) => String(s._id.b) === String(b._id));
     const by = (s: string) => mine.find((m) => m._id.s === s)?.amount ?? 0;
-    return { ...b, accruedPaise: by('accrued'), paidPaise: by('paid'), bookings: mine.filter((m) => m._id.s !== 'cancelled').reduce((a, m) => a + m.n, 0) };
+    return {
+      ...b,
+      accruedPaise: by('accrued'),
+      paidPaise: by('paid'),
+      bookings: mine.filter((m) => m._id.s !== 'cancelled').reduce((a, m) => a + m.n, 0),
+    };
   });
 }
 
@@ -38,7 +43,12 @@ export async function getBroker(ctx: TenantContext, id: string) {
   if (ctx.projectScope !== null) filter.projectId = { $in: ctx.projectScope };
   const commissions = await BrokerCommission.find(filter)
     .sort({ createdAt: -1 })
-    .populate({ path: 'bookingId', select: 'bookingNumber status customerId', match: { companyId: ctx.companyId }, populate: { path: 'customerId', select: 'name', match: { companyId: ctx.companyId } } })
+    .populate({
+      path: 'bookingId',
+      select: 'bookingNumber status customerId',
+      match: { companyId: ctx.companyId },
+      populate: { path: 'customerId', select: 'name', match: { companyId: ctx.companyId } },
+    })
     .populate({ path: 'projectId', select: 'name code', match: { companyId: ctx.companyId } })
     .lean();
   const payableBalancePaise = await partyBalance(ctx.companyId, { brokerId: broker._id }, 'broker_payable');
@@ -52,7 +62,11 @@ export async function createBroker(ctx: TenantContext, input: BrokerInput) {
 }
 
 export async function updateBroker(ctx: TenantContext, id: string, input: Partial<BrokerInput>) {
-  const broker = await Broker.findOneAndUpdate({ companyId: ctx.companyId, _id: toObjectId(id) }, { $set: input }, { new: true, runValidators: true }).lean();
+  const broker = await Broker.findOneAndUpdate(
+    { companyId: ctx.companyId, _id: toObjectId(id) },
+    { $set: input },
+    { new: true, runValidators: true },
+  ).lean();
   if (!broker) throw notFound('Broker');
   await audit(ctx, { action: 'brokers.update', entityType: 'broker', entityId: broker._id, changes: input });
   return broker;
@@ -124,7 +138,9 @@ export async function cancelCommission(actor: Actor, bookingId: Types.ObjectId, 
 /** Pays selected accrued commissions in one voucher. */
 export async function payoutCommissions(ctx: TenantContext, brokerId: string, input: BrokerPayoutInput) {
   return withTransaction(async (session) => {
-    const broker = await Broker.findOne({ companyId: ctx.companyId, _id: toObjectId(brokerId) }).session(session).lean();
+    const broker = await Broker.findOne({ companyId: ctx.companyId, _id: toObjectId(brokerId) })
+      .session(session)
+      .lean();
     if (!broker) throw notFound('Broker');
     const ids = [...new Set(input.commissionIds)].map(toObjectId);
     const filter: Record<string, unknown> = { companyId: ctx.companyId, brokerId: broker._id, _id: { $in: ids }, status: 'accrued' };
@@ -153,11 +169,33 @@ export async function payoutCommissions(ctx: TenantContext, brokerId: string, in
     );
     const res = await BrokerCommission.updateMany(
       { companyId: ctx.companyId, _id: { $in: ids }, status: 'accrued' },
-      { $set: { status: 'paid', payout: { number, paidOn: parseISODate(input.paidOn), mode: input.mode, accountId, reference: input.reference, journalEntryId: je._id } } },
+      {
+        $set: {
+          status: 'paid',
+          payout: {
+            number,
+            paidOn: parseISODate(input.paidOn),
+            mode: input.mode,
+            accountId,
+            reference: input.reference,
+            journalEntryId: je._id,
+          },
+        },
+      },
       { session },
     );
     if (res.modifiedCount !== ids.length) throw businessRule('Commissions changed concurrently, please retry');
-    await audit(ctx, { action: 'brokers.payout', entityType: 'broker', entityId: broker._id, summary: `${number} ${formatINR(total)}`, changes: { commissionIds: ids.map(String) } }, session);
+    await audit(
+      ctx,
+      {
+        action: 'brokers.payout',
+        entityType: 'broker',
+        entityId: broker._id,
+        summary: `${number} ${formatINR(total)}`,
+        changes: { commissionIds: ids.map(String) },
+      },
+      session,
+    );
     return { number, totalPaise: total, count: commissions.length, journalEntryId: String(je._id) };
   });
 }

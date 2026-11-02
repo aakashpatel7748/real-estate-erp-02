@@ -66,7 +66,10 @@ export function WhatsAppButton({
   }, [open, templateId, list]);
   const send = useMutation({
     // The tab is opened synchronously on click (popup blockers allow that), then pointed at WhatsApp.
-    mutationFn: async (tab: Window | null) => ({ tab, r: await api.post<Rendered>(`/whatsapp-templates/${templateId}/render`, { entityType, entityId, log: true }) }),
+    mutationFn: async (tab: Window | null) => ({
+      tab,
+      r: await api.post<Rendered>(`/whatsapp-templates/${templateId}/render`, { entityType, entityId, log: true }),
+    }),
     onSuccess: ({ tab, r }) => {
       const url = waUrl(r.url, text || r.text);
       if (tab) tab.location.href = url;
@@ -91,7 +94,11 @@ export function WhatsAppButton({
         <MessageCircle /> {label}
       </Button>
       <Dialog open={open} onOpenChange={setOpen}>
-        <DialogContent title="Send on WhatsApp" description="Choose a template; you can edit the message before it opens in WhatsApp." className="max-w-xl">
+        <DialogContent
+          title="Send on WhatsApp"
+          description="Choose a template; you can edit the message before it opens in WhatsApp."
+          className="max-w-xl"
+        >
           {templates.isPending ? (
             <p className="text-sm text-muted-foreground">Loading templates…</p>
           ) : !list.length ? (

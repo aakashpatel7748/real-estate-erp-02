@@ -168,3 +168,29 @@ Commissions are created by the booking workflow (on confirmation) and cancelled 
 | GET | `/dashboard?projectId` | `dashboard.read` (sections, including the leads, land and works cards, are gated by module read permissions) |
 | GET | `/search?q` | results limited to modules you can read |
 | GET | `/api/health` | public liveness and DB check (outside `/v1`) |
+
+## Phase 3 endpoints
+
+| Method | Path | Permission |
+| --- | --- | --- |
+| GET | `/structure?projectId` | `projects.read`: phases and towers with unit counts by status |
+| GET / POST / PATCH | `/cash-bank-accounts[/:id]` | `accounting.read` / `accounting.manageAccounts`: bank & cash accounts with balances; opening balance posts against capital |
+| GET / POST / PATCH / DELETE | `/rate-indexes[/:id]` · POST `/rate-indexes/:id/apply` `{dryRun}` | `inventory.read` / `inventory.update` |
+| GET / POST / PATCH / DELETE | `/parties`, `/financers`, `/consultants`, `/charges` `[/:id]?kind&type&projectId&active&q` | `masters.*` |
+| POST | `/charges/compute` `{projectId, plotIds}` | `masters.read`: charge master priced for the selected units |
+| GET / POST / PATCH / DELETE | `/parking[/:id]` · POST `/parking/bulk` · `/parking/:id/allot` `{bookingId}` · `/release` · `/block` · GET `/parking/summary` | `inventory.*` |
+| GET | `/sales-dashboard?projectId&from&to` | `crm.read` |
+| GET / PUT | `/lead-settings` | `crm.read` / `crm.configure` |
+| CRUD | `/whatsapp-templates` · POST `/whatsapp-templates/:id/render` `{entityType, entityId, log}` | `crm.read` / `crm.configure`; render checks access to the record |
+| CRUD | `/integrations` · GET `/:id/logs` · POST `/:id/rotate` · POST `/:id/test` | `crm.configure` |
+| POST | `/inbound/leads/:token` | **public**, JSON or form post, CORS open, rate limited; 201 created · 200 repeat enquiry · 404 unknown token · 422 no phone |
+| GET / POST | `/quotations` · GET `/:id` · GET `/:id/pdf` · POST `/:id/status` | `quotations.*`; `POST /bookings` accepts `quotationId` and converts it once |
+| PUT | `/post-sales/bookings/:id/loan` (body or `null`) | `postSales.update` |
+| GET | `/post-sales/allotments[/summary]` · POST `/post-sales/bookings/:id/allotment` `{issued, via}` | `postSales.read` / `.update` |
+| GET | `/post-sales/cancellations[/summary]?refund=pending\|settled` | `bookings.read` |
+| GET | `/post-sales/dues[/summary]?bucket&followUp` · GET / POST `/post-sales/follow-ups` | `collections.*` |
+| GET / POST | `/post-sales/documents?kind=agreement\|registry\|possession\|demand` · GET / PATCH `/:id` · GET `/:id/pdf` · POST `/documents/demand/bulk` | `postSales.*`; registry/possession enforce the dues rule unless `overrideDues` with a remark |
+| GET / POST | `/pdcs[/summary]` · POST `/pdcs/:id/deposit` · `/clear` 🔑 · `/bounce` · `/return` | `pdc.*` (+ `payments.create` to clear) |
+| GET | `/vendor-payments?vendorId&projectId&from&to` | `vendors.read` (`x-total-amount` header) |
+| GET / POST 🔑 | `/ledger-adjustments` · POST `/:id/reverse` | `accounting.read` / `accounting.adjust` |
+| GET / POST 🔑 | `/gst-vouchers` · GET `/summary?from&to` · POST `/:id/reverse` | `accounting.read` / `.create` / `.reverse` |

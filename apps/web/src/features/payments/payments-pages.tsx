@@ -60,7 +60,7 @@ export function PaymentsPage() {
   return (
     <>
       <PageHeader
-        title="Receipts & refunds"
+        title="Customer Receipts"
         description="Every rupee received or paid back, with its receipt number"
         actions={
           <Can permission="reports.export">

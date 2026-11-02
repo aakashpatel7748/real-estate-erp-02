@@ -38,8 +38,11 @@ cashBankRouter.get('/', authorize('accounting.read'), async (req, res) => ok(res
 cashBankRouter.post('/', authorize('accounting.manageAccounts'), validate({ body: cashBankAccountSchema }), async (req, res) =>
   created(res, await svc.createCashBankAccount(getCtx(req), body(req))),
 );
-cashBankRouter.patch('/:id', authorize('accounting.manageAccounts'), validate({ params: idParam, body: cashBankAccountUpdateSchema }), async (req, res) =>
-  ok(res, await svc.updateCashBankAccount(getCtx(req), params<Id>(req).id, body(req))),
+cashBankRouter.patch(
+  '/:id',
+  authorize('accounting.manageAccounts'),
+  validate({ params: idParam, body: cashBankAccountUpdateSchema }),
+  async (req, res) => ok(res, await svc.updateCashBankAccount(getCtx(req), params<Id>(req).id, body(req))),
 );
 
 // ---------- Post-dated cheques ----------
@@ -51,12 +54,18 @@ pdcRouter.get('/', authorize('pdc.read'), validate({ query: pdcListQuerySchema }
 pdcRouter.get('/summary', authorize('pdc.read'), validate({ query: pdcListQuerySchema }), async (req, res) =>
   ok(res, (await svc.listPdcs(getCtx(req), { ...query<{ page: number }>(req), page: 1, pageSize: 1 })).summary),
 );
-pdcRouter.post('/', authorize('pdc.create'), validate({ body: pdcSchema }), async (req, res) => created(res, await svc.createPdc(getCtx(req), body(req))));
+pdcRouter.post('/', authorize('pdc.create'), validate({ body: pdcSchema }), async (req, res) =>
+  created(res, await svc.createPdc(getCtx(req), body(req))),
+);
 pdcRouter.post('/:id/deposit', authorize('pdc.update'), validate({ params: idParam, body: pdcDepositSchema }), async (req, res) =>
   ok(res, await svc.depositPdc(getCtx(req), params<Id>(req).id, body(req))),
 );
-pdcRouter.post('/:id/clear', authorize('pdc.update', 'payments.create'), validate({ params: idParam, body: pdcClearSchema }), idempotent, async (req, res) =>
-  ok(res, await svc.clearPdc(getCtx(req), params<Id>(req).id, body(req))),
+pdcRouter.post(
+  '/:id/clear',
+  authorize('pdc.update', 'payments.create'),
+  validate({ params: idParam, body: pdcClearSchema }),
+  idempotent,
+  async (req, res) => ok(res, await svc.clearPdc(getCtx(req), params<Id>(req).id, body(req))),
 );
 pdcRouter.post('/:id/bounce', authorize('pdc.update'), validate({ params: idParam, body: pdcBounceSchema }), async (req, res) =>
   ok(res, await svc.bouncePdc(getCtx(req), params<Id>(req).id, body(req))),
@@ -78,7 +87,13 @@ export const adjustmentsRouter = Router();
 adjustmentsRouter.get(
   '/',
   authorize('accounting.read'),
-  validate({ query: listQuerySchema.extend({ projectId: objectId.optional(), bookingId: objectId.optional(), type: z.enum(ADJUSTMENT_TYPES).optional() }) }),
+  validate({
+    query: listQuerySchema.extend({
+      projectId: objectId.optional(),
+      bookingId: objectId.optional(),
+      type: z.enum(ADJUSTMENT_TYPES).optional(),
+    }),
+  }),
   async (req, res) => {
     const { items, meta } = await svc.listAdjustments(getCtx(req), query(req));
     ok(res, items, meta);
@@ -97,12 +112,17 @@ gstRouter.get('/', authorize('accounting.read'), validate({ query: gstListQueryS
   const { items, meta } = await svc.listGstVouchers(getCtx(req), query(req));
   ok(res, items, meta);
 });
-gstRouter.get('/summary', authorize('accounting.read'), validate({ query: z.object({ from: isoDate.optional(), to: isoDate.optional() }) }), async (req, res) => {
-  const q = query<{ from?: string; to?: string }>(req);
-  const today = todayInIndia();
-  const fyStart = `${financialYear(today).slice(0, 4)}-04-01`;
-  ok(res, await svc.gstSummary(getCtx(req), q.from ?? fyStart, q.to ?? today));
-});
+gstRouter.get(
+  '/summary',
+  authorize('accounting.read'),
+  validate({ query: z.object({ from: isoDate.optional(), to: isoDate.optional() }) }),
+  async (req, res) => {
+    const q = query<{ from?: string; to?: string }>(req);
+    const today = todayInIndia();
+    const fyStart = `${financialYear(today).slice(0, 4)}-04-01`;
+    ok(res, await svc.gstSummary(getCtx(req), q.from ?? fyStart, q.to ?? today));
+  },
+);
 gstRouter.post('/', authorize('accounting.create'), validate({ body: gstVoucherSchema }), idempotent, async (req, res) =>
   created(res, await svc.createGstVoucher(getCtx(req), body(req))),
 );

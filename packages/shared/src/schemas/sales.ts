@@ -13,7 +13,9 @@ import {
   phone,
   positivePaise,
   requiredText,
-  trimmed, patchSchema } from './common';
+  trimmed,
+  patchSchema,
+} from './common';
 
 export const coApplicantSchema = z.object({
   name: requiredText('Co-applicant name', 120),

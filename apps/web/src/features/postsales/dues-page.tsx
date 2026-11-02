@@ -32,7 +32,14 @@ interface Due {
   nextDue?: string;
   customer?: { _id: string; name: string; phone: string; customerCode: string };
   booking?: { bookingNumber: string; netAmountPaise: number; receivedPaise: number };
-  lastFollowUp?: { type: string; note: string; createdAt: string; nextFollowUpOn?: string; promisedAmountPaise?: number; promisedOn?: string } | null;
+  lastFollowUp?: {
+    type: string;
+    note: string;
+    createdAt: string;
+    nextFollowUpOn?: string;
+    promisedAmountPaise?: number;
+    promisedOn?: string;
+  } | null;
 }
 interface Summary {
   overduePaise: number;
@@ -67,7 +74,10 @@ export function DuesPage() {
   const followUp = lp.filter('followUp');
   const query = { ...lp.query, bucket, followUp, projectId: projectId ?? undefined };
   const q = useQuery({ queryKey: ['dues', query], queryFn: () => api.page<Due>('/post-sales/dues', query) });
-  const summary = useQuery({ queryKey: ['dues', 'summary', projectId], queryFn: () => api.get<Summary>('/post-sales/dues/summary', { projectId: projectId ?? undefined }) });
+  const summary = useQuery({
+    queryKey: ['dues', 'summary', projectId],
+    queryFn: () => api.get<Summary>('/post-sales/dues/summary', { projectId: projectId ?? undefined }),
+  });
   const [open, setOpen] = React.useState<Due | null>(null);
   const today = todayInIndia();
   const columns: Column<Due>[] = [
@@ -83,16 +93,42 @@ export function DuesPage() {
         </div>
       ),
     },
-    { key: 'overdue', header: 'Overdue', sortKey: 'overduePaise', align: 'right', cell: (r) => <span className={cn('tabular', r.overduePaise > 0 && 'font-semibold text-destructive')}>{formatINR(r.overduePaise)}</span> },
+    {
+      key: 'overdue',
+      header: 'Overdue',
+      sortKey: 'overduePaise',
+      align: 'right',
+      cell: (r) => (
+        <span className={cn('tabular', r.overduePaise > 0 && 'font-semibold text-destructive')}>{formatINR(r.overduePaise)}</span>
+      ),
+    },
     {
       key: 'days',
       header: 'Days late',
       sortKey: 'daysOverdue',
       align: 'right',
-      cell: (r) => (r.daysOverdue ? <Badge variant={r.daysOverdue > 90 ? 'destructive' : r.daysOverdue > 30 ? 'warning' : 'muted'}>{r.daysOverdue} d</Badge> : <span className="text-muted-foreground">—</span>),
+      cell: (r) =>
+        r.daysOverdue ? (
+          <Badge variant={r.daysOverdue > 90 ? 'destructive' : r.daysOverdue > 30 ? 'warning' : 'muted'}>{r.daysOverdue} d</Badge>
+        ) : (
+          <span className="text-muted-foreground">—</span>
+        ),
     },
-    { key: 'upcoming', header: 'Next 30 days', sortKey: 'upcomingPaise', align: 'right', hideOnMobile: true, cell: (r) => <span className="tabular">{formatINR(r.upcomingPaise)}</span> },
-    { key: 'outstanding', header: 'Total outstanding', sortKey: 'outstandingPaise', align: 'right', cell: (r) => <span className="tabular">{formatINR(r.outstandingPaise)}</span> },
+    {
+      key: 'upcoming',
+      header: 'Next 30 days',
+      sortKey: 'upcomingPaise',
+      align: 'right',
+      hideOnMobile: true,
+      cell: (r) => <span className="tabular">{formatINR(r.upcomingPaise)}</span>,
+    },
+    {
+      key: 'outstanding',
+      header: 'Total outstanding',
+      sortKey: 'outstandingPaise',
+      align: 'right',
+      cell: (r) => <span className="tabular">{formatINR(r.outstandingPaise)}</span>,
+    },
     {
       key: 'follow',
       header: 'Last follow-up',
@@ -104,7 +140,13 @@ export function DuesPage() {
               {titleCase(r.lastFollowUp.type)}: {r.lastFollowUp.note}
             </p>
             {r.lastFollowUp.nextFollowUpOn && (
-              <p className={cn(r.lastFollowUp.nextFollowUpOn.slice(0, 10) <= today ? 'font-medium text-destructive' : 'text-muted-foreground')}>Next {formatDate(r.lastFollowUp.nextFollowUpOn.slice(0, 10))}</p>
+              <p
+                className={cn(
+                  r.lastFollowUp.nextFollowUpOn.slice(0, 10) <= today ? 'font-medium text-destructive' : 'text-muted-foreground',
+                )}
+              >
+                Next {formatDate(r.lastFollowUp.nextFollowUpOn.slice(0, 10))}
+              </p>
             )}
           </div>
         ) : (
@@ -115,11 +157,25 @@ export function DuesPage() {
   const s = summary.data;
   return (
     <>
-      <PageHeader title="Dues & Collection Follow-Ups" description="Who owes what, how late, and what they promised. Log every call and send reminders on WhatsApp." />
+      <PageHeader
+        title="Dues & Collection Follow-Ups"
+        description="Who owes what, how late, and what they promised. Log every call and send reminders on WhatsApp."
+      />
       <div className="mb-6 grid gap-4 sm:grid-cols-3">
-        <StatCard label="Overdue" value={formatINR(s?.overduePaise ?? 0)} icon={AlarmClock} tone={s?.overduePaise ? 'danger' : 'default'} loading={summary.isPending} />
+        <StatCard
+          label="Overdue"
+          value={formatINR(s?.overduePaise ?? 0)}
+          icon={AlarmClock}
+          tone={s?.overduePaise ? 'danger' : 'default'}
+          loading={summary.isPending}
+        />
         <StatCard label="Falling due in 30 days" value={formatINR(s?.upcomingPaise ?? 0)} icon={IndianRupee} loading={summary.isPending} />
-        <StatCard label="Total receivable" value={formatINR(s?.outstandingPaise ?? 0)} icon={ReceiptIndianRupee} loading={summary.isPending} />
+        <StatCard
+          label="Total receivable"
+          value={formatINR(s?.outstandingPaise ?? 0)}
+          icon={ReceiptIndianRupee}
+          loading={summary.isPending}
+        />
       </div>
       <div className="mb-4 flex flex-wrap gap-2" role="tablist" aria-label="Aging">
         {BUCKETS.map((b) => {
@@ -131,17 +187,29 @@ export function DuesPage() {
               role="tab"
               aria-selected={bucket === b.key}
               onClick={() => lp.setFilter('bucket', b.key === 'all' ? undefined : b.key)}
-              className={cn('cursor-pointer rounded-full border px-3 py-1.5 text-sm transition-colors', bucket === b.key ? 'border-primary bg-primary text-primary-foreground' : 'hover:bg-muted')}
+              className={cn(
+                'cursor-pointer rounded-full border px-3 py-1.5 text-sm transition-colors',
+                bucket === b.key ? 'border-primary bg-primary text-primary-foreground' : 'hover:bg-muted',
+              )}
             >
               {b.label}
-              {a && <span className="ml-1.5 opacity-75">· {a.bookings} · {formatINR(a.amountPaise, { decimals: false })}</span>}
+              {a && (
+                <span className="ml-1.5 opacity-75">
+                  · {a.bookings} · {formatINR(a.amountPaise, { decimals: false })}
+                </span>
+              )}
             </button>
           );
         })}
       </div>
       <div className="mb-4 flex flex-wrap items-center gap-2">
         <SearchInput value={lp.q} onChange={lp.setQ} placeholder="Search customer, phone, booking" className="w-full sm:w-72" />
-        <Select className="h-9 w-auto" value={followUp ?? ''} onChange={(e) => lp.setFilter('followUp', e.target.value || undefined)} aria-label="Follow-up">
+        <Select
+          className="h-9 w-auto"
+          value={followUp ?? ''}
+          onChange={(e) => lp.setFilter('followUp', e.target.value || undefined)}
+          aria-label="Follow-up"
+        >
           <option value="">Any follow-up</option>
           <option value="due">Follow-up due</option>
           <option value="none">Never contacted</option>
@@ -184,7 +252,11 @@ function DueSheet({ due, onClose }: { due: Due | null; onClose: () => void }) {
     setPromisedOn('');
     setNextOn('');
   }, [due]);
-  const history = useQuery({ queryKey: ['follow-ups', due?.bookingId], queryFn: () => api.get<FollowUp[]>('/post-sales/follow-ups', { bookingId: due!.bookingId }), enabled: !!due });
+  const history = useQuery({
+    queryKey: ['follow-ups', due?.bookingId],
+    queryFn: () => api.get<FollowUp[]>('/post-sales/follow-ups', { bookingId: due!.bookingId }),
+    enabled: !!due,
+  });
   const promisedOk = rupeeField('Amount', { required: false }).safeParse(promised).success;
   const save = useMutation({
     mutationFn: () =>
@@ -268,7 +340,12 @@ function DueSheet({ due, onClose }: { due: Due | null; onClose: () => void }) {
                     <Input type="date" value={nextOn} min={todayInIndia()} onChange={(e) => setNextOn(e.target.value)} />
                   </Field>
                   <Field label="What happened" htmlFor="fu-note" required className="sm:col-span-2">
-                    <Textarea rows={2} value={note} onChange={(e) => setNote(e.target.value)} placeholder="Spoke to customer; will pay after salary" />
+                    <Textarea
+                      rows={2}
+                      value={note}
+                      onChange={(e) => setNote(e.target.value)}
+                      placeholder="Spoke to customer; will pay after salary"
+                    />
                   </Field>
                   <Field label="Promised amount" htmlFor="fu-amt" error={promisedOk ? undefined : 'Enter an amount'}>
                     <MoneyInput value={promised} onChange={(e) => setPromised(e.target.value)} />
@@ -295,7 +372,9 @@ function DueSheet({ due, onClose }: { due: Due | null; onClose: () => void }) {
                       </p>
                       <p className="text-xs text-muted-foreground">
                         {f.createdBy?.name} · {formatDateTime(f.createdAt)}
-                        {f.promisedAmountPaise ? ` · promised ${formatINR(f.promisedAmountPaise)}${f.promisedOn ? ` by ${formatDate(f.promisedOn.slice(0, 10))}` : ''}` : ''}
+                        {f.promisedAmountPaise
+                          ? ` · promised ${formatINR(f.promisedAmountPaise)}${f.promisedOn ? ` by ${formatDate(f.promisedOn.slice(0, 10))}` : ''}`
+                          : ''}
                         {f.nextFollowUpOn ? ` · next ${formatDate(f.nextFollowUpOn.slice(0, 10))}` : ''}
                       </p>
                     </li>

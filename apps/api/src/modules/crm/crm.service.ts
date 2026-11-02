@@ -39,7 +39,11 @@ async function validateRefs(ctx: TenantContext, input: Partial<LeadInput>) {
   }
   if (input.interestedPlotIds?.length) {
     if (!input.projectId) throw badRequest('Choose the project for the plots of interest');
-    const n = await Plot.countDocuments({ companyId: c, projectId: toObjectId(input.projectId), _id: { $in: input.interestedPlotIds.map(toObjectId) } });
+    const n = await Plot.countDocuments({
+      companyId: c,
+      projectId: toObjectId(input.projectId),
+      _id: { $in: input.interestedPlotIds.map(toObjectId) },
+    });
     if (n !== input.interestedPlotIds.length) throw badRequest('Some plots do not belong to the project');
   }
 }
@@ -127,7 +131,14 @@ export async function leadSummary(ctx: TenantContext, projectId?: string) {
   const counts = Object.fromEntries(byStatus.map((s) => [s._id, s.n]));
   const total = byStatus.reduce((a, s) => a + s.n, 0);
   const open = OPEN_LEAD_STATUSES.reduce((a, s) => a + (counts[s] ?? 0), 0);
-  return { byStatus: counts, total, open, followUpsDue: due, conversionRateBp: total ? Math.round(((counts.won ?? 0) * 10_000) / total) : 0, bySource };
+  return {
+    byStatus: counts,
+    total,
+    open,
+    followUpsDue: due,
+    conversionRateBp: total ? Math.round(((counts.won ?? 0) * 10_000) / total) : 0,
+    bySource,
+  };
 }
 
 export async function getLead(ctx: TenantContext, id: string) {
@@ -139,7 +150,11 @@ export async function getLead(ctx: TenantContext, id: string) {
     .populate({ path: 'customerId', select: 'name customerCode', match: { companyId: ctx.companyId } })
     .lean();
   if (!lead) throw notFound('Lead');
-  const activities = await LeadActivity.find({ companyId: ctx.companyId, leadId: lead._id }).sort({ createdAt: -1 }).limit(200).populate('actorId', 'name').lean();
+  const activities = await LeadActivity.find({ companyId: ctx.companyId, leadId: lead._id })
+    .sort({ createdAt: -1 })
+    .limit(200)
+    .populate('actorId', 'name')
+    .lean();
   return { ...lead, activities };
 }
 
@@ -147,7 +162,13 @@ export async function createLead(ctx: TenantContext, input: LeadInput) {
   await validateRefs(ctx, input);
   await assertLeadSource(ctx.companyId, input.source, true);
   if (ctx.projectScope !== null && !input.projectId && !input.assignedTo) input.assignedTo = String(ctx.userId);
-  const lead = await Lead.create({ companyId: ctx.companyId, ...normalize(input), status: 'new', createdBy: ctx.userId, lastActivityAt: new Date() });
+  const lead = await Lead.create({
+    companyId: ctx.companyId,
+    ...normalize(input),
+    status: 'new',
+    createdBy: ctx.userId,
+    lastActivityAt: new Date(),
+  });
   await logActivity(ctx, lead._id, 'note', 'Lead created');
   if (lead.assignedTo) await notifyAssignee(ctx, lead, lead.assignedTo);
   await audit(ctx, { action: 'crm.create', entityType: 'lead', entityId: lead._id, summary: lead.name });
@@ -216,7 +237,10 @@ export async function convertLead(ctx: TenantContext, id: string) {
     if (lead.customerId) throw businessRule('This lead has already been converted');
     if (lead.status === 'lost') throw businessRule('Reopen the lead before converting it');
 
-    const existing = await Customer.findOne({ companyId: ctx.companyId, phone: lead.phone, deletedAt: null }).session(session).select('_id').lean();
+    const existing = await Customer.findOne({ companyId: ctx.companyId, phone: lead.phone, deletedAt: null })
+      .session(session)
+      .select('_id')
+      .lean();
     const linked = Boolean(existing);
     let customerId = existing?._id;
     if (!customerId) {
@@ -239,15 +263,36 @@ export async function convertLead(ctx: TenantContext, id: string) {
     }
     const res = await Lead.updateOne(
       { companyId: ctx.companyId, _id: lead._id, customerId: null },
-      { $set: { customerId: customerId, status: 'won', convertedAt: new Date(), lastActivityAt: new Date() }, $unset: { nextFollowUpAt: 1 } },
+      {
+        $set: { customerId: customerId, status: 'won', convertedAt: new Date(), lastActivityAt: new Date() },
+        $unset: { nextFollowUpAt: 1 },
+      },
       { session },
     );
     if (res.modifiedCount !== 1) throw businessRule('This lead has already been converted');
     await LeadActivity.create(
-      [{ companyId: ctx.companyId, leadId: lead._id, type: 'status_change', summary: linked ? 'Linked to existing customer and marked won' : 'Converted to customer', actorId: ctx.userId, completedAt: new Date() }],
+      [
+        {
+          companyId: ctx.companyId,
+          leadId: lead._id,
+          type: 'status_change',
+          summary: linked ? 'Linked to existing customer and marked won' : 'Converted to customer',
+          actorId: ctx.userId,
+          completedAt: new Date(),
+        },
+      ],
       { session },
     );
-    await audit(ctx, { action: 'crm.convert', entityType: 'lead', entityId: lead._id, changes: { customerId: String(customerId), linkedExisting: linked } }, session);
+    await audit(
+      ctx,
+      {
+        action: 'crm.convert',
+        entityType: 'lead',
+        entityId: lead._id,
+        changes: { customerId: String(customerId), linkedExisting: linked },
+      },
+      session,
+    );
     return { leadId: String(lead._id), customerId: String(customerId), linkedExisting: linked };
   });
 }

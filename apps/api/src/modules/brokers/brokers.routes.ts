@@ -23,10 +23,16 @@ brokersRouter.get(
 brokersRouter.post('/', authorize('brokers.create'), validate({ body: brokerSchema }), async (req, res) =>
   created(res, await brokers.createBroker(getCtx(req), body<BrokerInput>(req))),
 );
-brokersRouter.get('/:id', authorize('brokers.read'), validate({ params: idParam }), async (req, res) => ok(res, await brokers.getBroker(getCtx(req), params<Id>(req).id)));
+brokersRouter.get('/:id', authorize('brokers.read'), validate({ params: idParam }), async (req, res) =>
+  ok(res, await brokers.getBroker(getCtx(req), params<Id>(req).id)),
+);
 brokersRouter.patch('/:id', authorize('brokers.update'), validate({ params: idParam, body: patchSchema(brokerSchema) }), async (req, res) =>
   ok(res, await brokers.updateBroker(getCtx(req), params<Id>(req).id, body<Partial<BrokerInput>>(req))),
 );
-brokersRouter.post('/:id/payouts', authorize('brokers.payout'), validate({ params: idParam, body: brokerPayoutSchema }), idempotent, async (req, res) =>
-  created(res, await brokers.payoutCommissions(getCtx(req), params<Id>(req).id, body<BrokerPayoutInput>(req))),
+brokersRouter.post(
+  '/:id/payouts',
+  authorize('brokers.payout'),
+  validate({ params: idParam, body: brokerPayoutSchema }),
+  idempotent,
+  async (req, res) => created(res, await brokers.payoutCommissions(getCtx(req), params<Id>(req).id, body<BrokerPayoutInput>(req))),
 );

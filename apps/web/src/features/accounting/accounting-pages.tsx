@@ -55,7 +55,7 @@ export function AccountingPage() {
   const tab = params.get('tab') ?? 'journal';
   return (
     <>
-      <PageHeader title="Accounting" description="Double-entry books generated from bookings, receipts and manual vouchers" />
+      <PageHeader title="Journal Voucher" description="Double-entry books generated from bookings, receipts and manual vouchers" />
       <Tabs value={tab} onValueChange={(t) => setParams({ tab: t }, { replace: true })}>
         <TabsList className="flex-wrap">
           <TabsTrigger value="journal">Journal</TabsTrigger>

@@ -16,7 +16,9 @@ import {
   type InviteUserInput,
   type ListQuery,
   type RoleInput,
-  type UpdateMembershipInput, patchSchema } from '@erp/shared';
+  type UpdateMembershipInput,
+  patchSchema,
+} from '@erp/shared';
 import { authorize } from '../middleware/auth';
 import { body, params, query, validate } from '../middleware/validate';
 import { created, escapeRegex, ok, pageMeta } from '../utils/http';

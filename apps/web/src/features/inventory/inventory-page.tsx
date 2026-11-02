@@ -6,7 +6,7 @@ import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import { Download, Layers, Plus } from 'lucide-react';
 import { toast } from 'sonner';
-import { PLOT_CATEGORIES, PLOT_STATUSES } from '@erp/shared';
+import { PLOT_CATEGORIES, PLOT_STATUSES, UNIT_TYPES } from '@erp/shared';
 import { api, download, errorMessage } from '@/lib/api';
 import { areaToSqft, formatINR, titleCase } from '@/lib/format';
 import { useListParams } from '@/hooks/use-list-params';
@@ -85,6 +85,12 @@ const bulkForm = z.object({
     .regex(/^\d{1,3}$/, '1–500')
     .refine((v) => Number(v) >= 1 && Number(v) <= 500, '1–500'),
   category: z.enum(PLOT_CATEGORIES),
+  unitType: z.enum(UNIT_TYPES),
+  floor: z
+    .string()
+    .regex(/^(-?\d{1,3})?$/, 'Floor number')
+    .optional(),
+  configuration: z.string().max(40).optional(),
   area: areaField('Area'),
   rate: rupeeField('Rate'),
   plc: percentField('PLC'),
@@ -99,6 +105,9 @@ function BulkCreateDialog({ open, onOpenChange, project }: { open: boolean; onOp
       startNumber: '1',
       count: '10',
       category: 'residential',
+      unitType: 'plot',
+      floor: '',
+      configuration: '',
       area: '1200',
       rate: project.defaultRatePaisePerSqft ? String(project.defaultRatePaisePerSqft / 100) : '',
       plc: '',
@@ -112,6 +121,9 @@ function BulkCreateDialog({ open, onOpenChange, project }: { open: boolean; onOp
         startNumber: Number(v.startNumber),
         count: Number(v.count),
         category: v.category,
+        unitType: v.unitType,
+        floor: v.floor ? Number(v.floor) : undefined,
+        configuration: v.configuration || undefined,
         areaX100: toAreaX100(v.area),
         ratePaisePerSqft: toPaise(v.rate),
         plcBp: toBp(v.plc),
@@ -119,7 +131,7 @@ function BulkCreateDialog({ open, onOpenChange, project }: { open: boolean; onOp
     onSuccess: (r) => {
       qc.invalidateQueries({ queryKey: ['plots', project.id] });
       qc.invalidateQueries({ queryKey: ['map', project.id] });
-      toast.success(`${r.created} plots created`);
+      toast.success(`${r.created} units created`);
       onOpenChange(false);
     },
     onError: (e) => toast.error(errorMessage(e)),
@@ -129,14 +141,33 @@ function BulkCreateDialog({ open, onOpenChange, project }: { open: boolean; onOp
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent
-        title="Add plots in bulk"
-        description="Creates a numbered series with identical size and rate. Edit individual plots afterwards."
+        title="Add units in bulk"
+        description="Creates a numbered series (plots, flats, shops…) with identical size and rate. Edit individual units afterwards."
         className="max-w-xl"
       >
         <form className="grid gap-4 sm:grid-cols-2" onSubmit={form.handleSubmit((x) => save.mutate(x))} noValidate>
-          <Field label="Block" htmlFor="b-block">
+          <Field label="Unit type" htmlFor="b-type">
+            <Select {...form.register('unitType')}>
+              {UNIT_TYPES.map((t) => (
+                <option key={t} value={t}>
+                  {titleCase(t)}
+                </option>
+              ))}
+            </Select>
+          </Field>
+          {v.unitType !== 'plot' && v.unitType !== 'farm_house' && (
+            <div className="grid grid-cols-2 gap-3">
+              <Field label="Floor" htmlFor="b-floor" error={e.floor?.message}>
+                <Input inputMode="numeric" {...form.register('floor')} />
+              </Field>
+              <Field label="Configuration" htmlFor="b-config">
+                <Input placeholder="2 BHK" {...form.register('configuration')} />
+              </Field>
+            </div>
+          )}
+          <Field label="Tower / block" htmlFor="b-block">
             <Select {...form.register('blockId')}>
-              <option value="">No block</option>
+              <option value="">No tower / block</option>
               {project.blocks?.map((b) => (
                 <option key={b.id} value={b.id}>
                   {b.name}
@@ -202,7 +233,12 @@ export function InventoryPage() {
     queryFn: () => api.get<Project>(`/projects/${projectId}`),
     enabled: Boolean(projectId),
   });
-  const filters = { status: lp.filter('status'), blockId: lp.filter('blockId'), category: lp.filter('category') };
+  const filters = {
+    status: lp.filter('status'),
+    blockId: lp.filter('blockId'),
+    category: lp.filter('category'),
+    unitType: lp.filter('unitType'),
+  };
   const plots = useQuery({
     queryKey: ['plots', projectId, lp.query, filters],
     queryFn: () => api.page<Plot>(`/projects/${projectId}/plots`, { ...lp.query, ...filters }),
@@ -210,7 +246,7 @@ export function InventoryPage() {
     placeholderData: (prev) => prev,
   });
 
-  if (!projectId) return <ProjectPicker title="Plot inventory" />;
+  if (!projectId) return <ProjectPicker title="Units / Inventory" />;
   const blocks = project.data?.blocks ?? [];
   const phases = project.data?.phases ?? [];
 
@@ -224,6 +260,20 @@ export function InventoryPage() {
           {p.blockCode ? <span className="text-muted-foreground">{p.blockCode}-</span> : null}
           {p.plotNumber}
           {p.isCorner && <span className="ml-1.5 text-xs text-muted-foreground">corner</span>}
+        </span>
+      ),
+    },
+    {
+      key: 'type',
+      header: 'Type',
+      cell: (p) => (
+        <span>
+          {titleCase(p.unitType ?? 'plot')}
+          {(p.configuration || p.floor !== undefined) && (
+            <span className="block text-xs text-muted-foreground">
+              {[p.configuration, p.floor !== undefined && p.floor !== null ? `Floor ${p.floor}` : null].filter(Boolean).join(' · ')}
+            </span>
+          )}
         </span>
       ),
     },
@@ -268,7 +318,7 @@ export function InventoryPage() {
           { label: summary?.name ?? 'Project', to: `/administration/projects/${projectId}` },
           { label: 'Inventory' },
         ]}
-        title="Plot inventory"
+        title="Units / Inventory"
         description={summary?.name}
         actions={
           <>
@@ -331,6 +381,19 @@ export function InventoryPage() {
           {PLOT_CATEGORIES.map((c) => (
             <option key={c} value={c}>
               {titleCase(c)}
+            </option>
+          ))}
+        </Select>
+        <Select
+          className="sm:w-40"
+          value={filters.unitType ?? ''}
+          onChange={(e) => lp.setFilter('unitType', e.target.value || undefined)}
+          aria-label="Unit type filter"
+        >
+          <option value="">All unit types</option>
+          {UNIT_TYPES.map((t) => (
+            <option key={t} value={t}>
+              {titleCase(t)}
             </option>
           ))}
         </Select>

@@ -6,7 +6,9 @@ import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import { BellRing, CalendarClock, KanbanSquare, List, MessageSquarePlus, Phone, Plus, Target, Trash2, UserCheck } from 'lucide-react';
 import { toast } from 'sonner';
-import { LEAD_ACTIVITY_TYPES, LEAD_SOURCES, LEAD_STATUSES, OPEN_LEAD_STATUSES, type LeadStatus } from '@erp/shared';
+import { LEAD_ACTIVITY_TYPES, LEAD_STATUSES, OPEN_LEAD_STATUSES, type LeadStatus } from '@erp/shared';
+import { useLeadSettings } from '@/features/presales/presales-pages';
+import { WhatsAppButton } from '@/components/whatsapp-button';
 import { api, errorMessage } from '@/lib/api';
 import { formatDateTime, formatINRCompact, titleCase } from '@/lib/format';
 import { cn } from '@/lib/utils';
@@ -65,6 +67,17 @@ function followUpLabel(at?: string) {
   return { text: formatDateTime(at), overdue };
 }
 
+/** Company-configured source and stage names (Pre Sales → Lead Stages & Sources). */
+function useLeadLabels() {
+  const ls = useLeadSettings().data;
+  return {
+    settings: ls,
+    source: (k: string) => ls?.sources.find((x) => x.key === k)?.label ?? titleCase(k),
+    stage: (k: string) => ls?.stageLabels[k] ?? titleCase(k),
+    sources: ls?.sources ?? [],
+  };
+}
+
 const leadForm = z.object({
   name: z.string().trim().min(1, 'Name is required').max(120),
   phone: z
@@ -72,7 +85,7 @@ const leadForm = z.object({
     .trim()
     .regex(/^\+?[0-9][0-9\s-]{6,16}$/, 'Enter a valid phone number'),
   email: z.string().trim().email('Enter a valid email').or(z.literal('')).optional(),
-  source: z.enum(LEAD_SOURCES),
+  source: z.string().min(1, 'Choose a source'),
   projectId: z.string().optional(),
   brokerId: z.string().optional(),
   assignedTo: z.string().optional(),
@@ -98,6 +111,7 @@ function LeadSheet({
   const { projects, projectId } = useProjectContext();
   const { can, context } = useAuth();
   const members = useMembers();
+  const labels = useLeadLabels();
   const brokers = useQuery({
     queryKey: ['brokers', 'options'],
     queryFn: () => api.get<{ id: string; name: string }[]>('/brokers'),
@@ -172,11 +186,13 @@ function LeadSheet({
           </Field>
           <Field label="Source" htmlFor="ld-source">
             <Select {...form.register('source')}>
-              {LEAD_SOURCES.map((s) => (
-                <option key={s} value={s}>
-                  {titleCase(s)}
-                </option>
-              ))}
+              {labels.sources
+                .filter((x) => x.active || x.key === lead?.source)
+                .map((x) => (
+                  <option key={x.key} value={x.key}>
+                    {x.label}
+                  </option>
+                ))}
             </Select>
           </Field>
           <Field label="Interested in project" htmlFor="ld-project">
@@ -247,6 +263,7 @@ function LeadDrawer({ leadId, onClose }: { leadId: string | null; onClose: () =>
   const [losing, setLosing] = React.useState(false);
   const [lostReason, setLostReason] = React.useState('');
   const [deleting, setDeleting] = React.useState(false);
+  const labels = useLeadLabels();
   const q = useQuery({ queryKey: ['leads', 'detail', leadId], queryFn: () => api.get<Lead>(`/leads/${leadId}`), enabled: Boolean(leadId) });
   const form = useForm<z.infer<typeof activityForm>>({
     resolver: zodResolver(activityForm),
@@ -310,7 +327,7 @@ function LeadDrawer({ leadId, onClose }: { leadId: string | null; onClose: () =>
       <Sheet open={Boolean(leadId)} onOpenChange={(o) => !o && onClose()}>
         <SheetContent
           title={l?.name ?? 'Lead'}
-          description={l ? `${l.phone}${l.email ? ` · ${l.email}` : ''} · ${titleCase(l.source)}` : undefined}
+          description={l ? `${l.phone}${l.email ? ` · ${l.email}` : ''} · ${labels.source(l.source)}` : undefined}
           className="sm:max-w-2xl"
           footer={
             l && (
@@ -326,6 +343,17 @@ function LeadDrawer({ leadId, onClose }: { leadId: string | null; onClose: () =>
                       Edit
                     </Button>
                   </Can>
+                  <WhatsAppButton
+                    entityType="lead"
+                    entityId={l.id}
+                    categories={['lead_followup', 'site_visit', 'quotation']}
+                    size="default"
+                  />
+                  {can('quotations.create') && l.status !== 'lost' && (
+                    <Button variant="outline" asChild>
+                      <Link to={`/pre-sales/quotations/new?lead=${l.id}${l.projectId ? `&project=${l.projectId.id}` : ''}`}>Quotation</Link>
+                    </Button>
+                  )}
                 </div>
                 {l.customerId ? (
                   <div className="flex gap-2">
@@ -335,7 +363,9 @@ function LeadDrawer({ leadId, onClose }: { leadId: string | null; onClose: () =>
                     {can('bookings.create') && (
                       <Button
                         onClick={() =>
-                          navigate(`/post-sales/bookings/new?customer=${l.customerId!.id}${l.projectId ? `&project=${l.projectId.id}` : ''}`)
+                          navigate(
+                            `/post-sales/bookings/new?customer=${l.customerId!.id}${l.projectId ? `&project=${l.projectId.id}` : ''}`,
+                          )
                         }
                       >
                         New booking
@@ -378,10 +408,10 @@ function LeadDrawer({ leadId, onClose }: { leadId: string | null; onClose: () =>
                       l.status === s ? 'border-primary bg-primary text-primary-foreground' : 'bg-card hover:bg-muted',
                     )}
                   >
-                    {titleCase(s)}
+                    {labels.stage(s)}
                   </button>
                 ))}
-                {l.status === 'won' && <Badge variant="success">Won</Badge>}
+                {l.status === 'won' && <Badge variant="success">{labels.stage('won')}</Badge>}
                 {l.status === 'lost' ? (
                   <>
                     <Badge variant="destructive">Lost{l.lostReason ? `: ${l.lostReason}` : ''}</Badge>
@@ -515,8 +545,18 @@ function LeadDrawer({ leadId, onClose }: { leadId: string | null; onClose: () =>
         onConfirm={() => (lostReason.trim() ? setStatus.mutate({ status: 'lost', lostReason }) : toast.error('Give a reason'))}
       >
         <Field label="Reason" htmlFor="lost-reason" required>
-          <Input value={lostReason} onChange={(e) => setLostReason(e.target.value)} placeholder="e.g. Bought elsewhere, budget mismatch" />
+          <Input
+            list="lost-reasons"
+            value={lostReason}
+            onChange={(e) => setLostReason(e.target.value)}
+            placeholder="Choose or type a reason"
+          />
         </Field>
+        <datalist id="lost-reasons">
+          {labels.settings?.lostReasons.map((r) => (
+            <option key={r} value={r} />
+          ))}
+        </datalist>
       </ConfirmDialog>
       <ConfirmDialog
         open={deleting}
@@ -533,6 +573,7 @@ function LeadDrawer({ leadId, onClose }: { leadId: string | null; onClose: () =>
 
 function LeadCard({ lead, onOpen }: { lead: Lead; onOpen: () => void }) {
   const fu = followUpLabel(lead.nextFollowUpAt);
+  const labels = useLeadLabels();
   return (
     <button
       type="button"
@@ -545,7 +586,7 @@ function LeadCard({ lead, onOpen }: { lead: Lead; onOpen: () => void }) {
       </p>
       <div className="mt-2 flex flex-wrap items-center gap-1.5 text-xs">
         {lead.projectId && <Badge variant="secondary">{lead.projectId.code}</Badge>}
-        <Badge variant="outline">{titleCase(lead.source)}</Badge>
+        <Badge variant="outline">{labels.source(lead.source)}</Badge>
       </div>
       {fu && (
         <p className={cn('mt-2 flex items-center gap-1 text-xs', fu.overdue ? 'font-medium text-destructive' : 'text-muted-foreground')}>
@@ -559,6 +600,7 @@ function LeadCard({ lead, onOpen }: { lead: Lead; onOpen: () => void }) {
 
 export function CrmPage() {
   const lp = useListParams({ pageSize: 50 });
+  const labels = useLeadLabels();
   const [params, setParams] = useSearchParams();
   const { projectId } = useProjectContext();
   const view = params.get('view') ?? 'board';
@@ -612,7 +654,7 @@ export function CrmPage() {
     { key: 'name', header: 'Name', sortKey: 'name', cell: (l) => <span className="font-medium">{l.name}</span> },
     { key: 'phone', header: 'Phone', cell: (l) => l.phone },
     { key: 'project', header: 'Project', cell: (l) => l.projectId?.code ?? '—', hideOnMobile: true },
-    { key: 'source', header: 'Source', cell: (l) => titleCase(l.source), hideOnMobile: true },
+    { key: 'source', header: 'Source', cell: (l) => labels.source(l.source), hideOnMobile: true },
     { key: 'owner', header: 'Owner', cell: (l) => l.assignedTo?.name ?? '—', hideOnMobile: true },
     {
       key: 'fu',
@@ -630,7 +672,7 @@ export function CrmPage() {
       cell: (l) => (
         <span className="inline-flex items-center gap-1.5 text-sm">
           <span className={cn('size-2 rounded-full', STATUS_COLOR[l.status])} aria-hidden />
-          {titleCase(l.status)}
+          {labels.stage(l.status)}
         </span>
       ),
     },
@@ -639,7 +681,7 @@ export function CrmPage() {
   return (
     <>
       <PageHeader
-        title="Leads"
+        title="Leads & Enquiries"
         description="Enquiries, follow-ups and conversions"
         actions={
           <Can permission="crm.create">
@@ -675,9 +717,9 @@ export function CrmPage() {
           aria-label="Source"
         >
           <option value="">All sources</option>
-          {LEAD_SOURCES.map((s) => (
-            <option key={s} value={s}>
-              {titleCase(s)}
+          {labels.sources.map((x) => (
+            <option key={x.key} value={x.key}>
+              {x.label}
             </option>
           ))}
         </Select>
@@ -702,7 +744,7 @@ export function CrmPage() {
               <option value="">All statuses</option>
               {LEAD_STATUSES.map((s) => (
                 <option key={s} value={s}>
-                  {titleCase(s)}
+                  {labels.stage(s)}
                 </option>
               ))}
             </Select>
@@ -742,7 +784,7 @@ export function CrmPage() {
                   <div className="mb-3 flex items-center justify-between">
                     <p className="flex items-center gap-2 text-sm font-semibold">
                       <span className={cn('size-2 rounded-full', STATUS_COLOR[s])} aria-hidden />
-                      {titleCase(s)}
+                      {labels.stage(s)}
                     </p>
                     <span className="text-xs text-muted-foreground">{summary.data?.byStatus[s] ?? items.length}</span>
                   </div>

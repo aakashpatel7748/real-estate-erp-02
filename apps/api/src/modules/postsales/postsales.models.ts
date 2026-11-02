@@ -28,7 +28,8 @@ const salesDocumentSchema = withTenant(
       history: [{ _id: false, status: String, note: String, at: { type: Date, default: Date.now }, by: ref('User') }],
       createdBy: ref('User'),
     },
-    baseOptions,
+    // Keep empty `details` objects instead of dropping the field.
+    { ...baseOptions, minimize: false },
   ),
 );
 salesDocumentSchema.index({ companyId: 1, number: 1 }, { unique: true });

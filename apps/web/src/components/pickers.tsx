@@ -49,7 +49,8 @@ export function BookingPicker({
             {value.bookingNumber} · {value.customerId?.name}
           </p>
           <p className="truncate text-xs text-muted-foreground">
-            {value.projectId?.name} {value.plots?.length ? `· Units ${value.plots.join(', ')}` : ''} · Due {formatINR(value.netAmountPaise - value.allocatedPaise)}
+            {value.projectId?.name} {value.plots?.length ? `· Units ${value.plots.join(', ')}` : ''} · Due{' '}
+            {formatINR(value.netAmountPaise - value.allocatedPaise)}
           </p>
         </div>
         <Button type="button" variant="ghost" size="icon-sm" onClick={() => onChange(null)} aria-label="Change booking">
@@ -62,7 +63,13 @@ export function BookingPicker({
     <div className="space-y-2" id={id}>
       <div className="relative">
         <Search className="pointer-events-none absolute left-2.5 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" aria-hidden />
-        <Input value={q} onChange={(e) => setQ(e.target.value)} placeholder="Search booking no., customer or phone" className="pl-8" aria-label="Search bookings" />
+        <Input
+          value={q}
+          onChange={(e) => setQ(e.target.value)}
+          placeholder="Search booking no., customer or phone"
+          className="pl-8"
+          aria-label="Search bookings"
+        />
       </div>
       <div className="max-h-48 overflow-y-auto rounded-md border">
         {results.isPending ? (

@@ -30,6 +30,15 @@ import * as crm from '../modules/crm/crm.service';
 import * as brokers from '../modules/brokers/brokers.service';
 import * as construction from '../modules/construction/construction.service';
 import { Account } from '../modules/accounting/accounting.models';
+import * as accounting from '../modules/accounting/accounting.service';
+import { ChargeMaster, Consultant, Financer, ParkingSlot, Party, RateIndex } from '../modules/masters/masters.models';
+import * as parking from '../modules/masters/masters.service';
+import { PortalIntegration, WhatsappTemplate } from '../modules/presales/presales.models';
+import * as quotations from '../modules/presales/presales.service';
+import { newToken, receiveInboundLead } from '../modules/presales/presales.service';
+import * as postsales from '../modules/postsales/postsales.service';
+import * as finance from '../modules/finance/finance.service';
+import { Pdc } from '../modules/finance/finance.models';
 import type { TenantContext } from '../utils/tenant';
 
 /** Service results are toJSON()-ed documents (with `id`), lean ones have `_id`. */
@@ -197,6 +206,7 @@ async function main() {
     { cust: 4, plots: [30], plan: emi, date: today, pay: 'none', reserve: true },
   ] as const;
 
+  const seeded: string[] = [];
   for (const s of scenarios) {
     const booking = await bookings.createBooking(ctx, {
       projectId,
@@ -208,6 +218,7 @@ async function main() {
       discountPaise: 0,
       charges: s.cust === 0 ? [{ name: 'Development charges', amountPaise: 50_000_00 }] : [],
     });
+    seeded.push(idOf(booking));
     const detail = await bookings.getBooking(ctx, idOf(booking));
     const toPay =
       s.pay === 'all'
@@ -230,8 +241,25 @@ async function main() {
       });
     }
   }
+  // Partners' capital funds land purchase and development (keeps the bank balance realistic).
+  const bankAcc = await Account.findOne({ companyId: company._id, systemKey: 'bank' }).lean();
+  const capitalAcc = await Account.findOne({ companyId: company._id, systemKey: 'capital' }).lean();
+  await accounting.createManualEntry(ctx, {
+    date: addMonths(today, -15),
+    narration: 'Capital introduced by partners for land and development',
+    lines: [
+      { accountId: String(bankAcc!._id), debitPaise: 4_00_00_000_00, creditPaise: 0 },
+      { accountId: String(capitalAcc!._id), debitPaise: 0, creditPaise: 4_00_00_000_00 },
+    ],
+  });
   // ---------- Phase 2: brokers, land, CRM, construction ----------
-  const broker = await brokers.createBroker(ctx, { name: 'Vikas Realty', phone: '+91 91111 22222', firmName: 'Vikas Realty & Associates', commissionBp: 150, isActive: true });
+  const broker = await brokers.createBroker(ctx, {
+    name: 'Vikas Realty',
+    phone: '+91 91111 22222',
+    firmName: 'Vikas Realty & Associates',
+    commissionBp: 150,
+    isActive: true,
+  });
   const brokered = await bookings.createBooking(ctx, {
     projectId,
     customerId: idOf(custs[2]),
@@ -244,7 +272,12 @@ async function main() {
     charges: [],
   });
   const firstInst = (await bookings.getBooking(ctx, idOf(brokered))).installments[0]!;
-  await payments.recordPayment(ctx, { bookingId: idOf(brokered), amountPaise: firstInst.amountPaise, mode: 'neft', receivedOn: addDays(today, -19) });
+  await payments.recordPayment(ctx, {
+    bookingId: idOf(brokered),
+    amountPaise: firstInst.amountPaise,
+    mode: 'neft',
+    receivedOn: addDays(today, -19),
+  });
 
   const parcelA = await land.createParcel(ctx, {
     projectId,
@@ -264,9 +297,19 @@ async function main() {
     mutationDone: true,
   });
   await land.changeStatus(ctx, idOf(parcelA), 'agreement', addMonths(today, -14), 'Agreement to sell signed');
-  await land.recordLandPayment(ctx, idOf(parcelA), { amountPaise: 1_20_00_000_00, paidOn: addMonths(today, -14), mode: 'rtgs', payee: 'Ram Prasad Patel' });
+  await land.recordLandPayment(ctx, idOf(parcelA), {
+    amountPaise: 1_20_00_000_00,
+    paidOn: addMonths(today, -14),
+    mode: 'rtgs',
+    payee: 'Ram Prasad Patel',
+  });
   await land.changeStatus(ctx, idOf(parcelA), 'registered', addMonths(today, -12), 'Sale deed registered');
-  await land.recordLandPayment(ctx, idOf(parcelA), { amountPaise: 1_60_00_000_00, paidOn: addMonths(today, -12), mode: 'rtgs', payee: 'Shyam Lal Patel' });
+  await land.recordLandPayment(ctx, idOf(parcelA), {
+    amountPaise: 1_60_00_000_00,
+    paidOn: addMonths(today, -12),
+    mode: 'rtgs',
+    payee: 'Shyam Lal Patel',
+  });
   await land.changeStatus(ctx, idOf(parcelA), 'converted', addMonths(today, -10), 'Diversion order received');
   const parcelB = await land.createParcel(ctx, {
     khasraNumber: '57/1',
@@ -281,8 +324,23 @@ async function main() {
     notes: 'Expansion land for phase 2; title search in progress.',
   });
   await land.changeStatus(ctx, idOf(parcelB), 'agreement', addDays(today, -25), 'Token agreement');
-  await land.recordLandPayment(ctx, idOf(parcelB), { amountPaise: 11_00_000_00, paidOn: addDays(today, -25), mode: 'cheque', payee: 'Kamla Bai', reference: '004512' });
-  await land.createParcel(ctx, { khasraNumber: '102', village: 'Ratibad', district: 'Bhopal', state: 'Madhya Pradesh', areaX100: 450, areaUnit: 'acre', owners: [{ name: 'Gopal Singh' }], mutationDone: false });
+  await land.recordLandPayment(ctx, idOf(parcelB), {
+    amountPaise: 11_00_000_00,
+    paidOn: addDays(today, -25),
+    mode: 'cheque',
+    payee: 'Kamla Bai',
+    reference: '004512',
+  });
+  await land.createParcel(ctx, {
+    khasraNumber: '102',
+    village: 'Ratibad',
+    district: 'Bhopal',
+    state: 'Madhya Pradesh',
+    areaX100: 450,
+    areaUnit: 'acre',
+    owners: [{ name: 'Gopal Singh' }],
+    mutationDone: false,
+  });
 
   const leadSeeds = [
     { name: 'Neha Jain', phone: '+91 90000 11111', source: 'facebook', status: 'site_visit', fu: -1 },
@@ -305,7 +363,8 @@ async function main() {
       budgetMaxPaise: 40_00_000_00,
     });
     if (l.status !== 'new') await crm.addActivity(ctx, idOf(lead), { type: 'call', summary: 'Shared price list and layout plan' });
-    if (l.status === 'site_visit' || l.status === 'negotiation') await crm.addActivity(ctx, idOf(lead), { type: 'site_visit', summary: 'Visited site with family; liked park-facing plots' });
+    if (l.status === 'site_visit' || l.status === 'negotiation')
+      await crm.addActivity(ctx, idOf(lead), { type: 'site_visit', summary: 'Visited site with family; liked park-facing plots' });
     if (l.status === 'negotiation') await crm.changeLeadStatus(ctx, idOf(lead), 'negotiation');
     if (l.status === 'lost') await crm.changeLeadStatus(ctx, idOf(lead), 'lost', 'Bought a flat instead');
     if (l.fu !== null) {
@@ -314,11 +373,28 @@ async function main() {
       await crm.addActivity(ctx, idOf(lead), { type: 'note', summary: 'Follow-up scheduled', nextFollowUpAt: at.toISOString() });
     }
   }
-  const wonLead = await crm.createLead(ctx, { projectId, name: 'Sunita Patel', phone: '+91 97520 44444', source: 'walk_in', interestedPlotIds: [] });
+  const wonLead = await crm.createLead(ctx, {
+    projectId,
+    name: 'Sunita Patel',
+    phone: '+91 97520 44444',
+    source: 'walk_in',
+    interestedPlotIds: [],
+  });
   await crm.convertLead(ctx, idOf(wonLead));
 
-  const roads = await construction.createVendor(ctx, { name: 'Shree Ganesh Road Builders', category: 'road', phone: '+91 98260 77777', gstin: '23ABCDE1234F1Z5', isActive: true });
-  const electric = await construction.createVendor(ctx, { name: 'Malwa Electricals', category: 'electrical', phone: '+91 98930 88888', isActive: true });
+  const roads = await construction.createVendor(ctx, {
+    name: 'Shree Ganesh Road Builders',
+    category: 'road',
+    phone: '+91 98260 77777',
+    gstin: '23ABCDE1234F1Z5',
+    isActive: true,
+  });
+  const electric = await construction.createVendor(ctx, {
+    name: 'Malwa Electricals',
+    category: 'electrical',
+    phone: '+91 98930 88888',
+    isActive: true,
+  });
   const devAccount = await Account.findOne({ companyId: company._id, systemKey: 'development_expense' }).lean();
   const woRoads = await construction.createWorkOrder(ctx, {
     projectId,
@@ -353,7 +429,13 @@ async function main() {
       settlement: 'payable',
     });
   }
-  await construction.payVendor(ctx, idOf(roads), { amountPaise: 17_00_000_00, paidOn: addMonths(today, -3), mode: 'rtgs', projectId, reference: 'UTR4431' });
+  await construction.payVendor(ctx, idOf(roads), {
+    amountPaise: 17_00_000_00,
+    paidOn: addMonths(today, -3),
+    mode: 'rtgs',
+    projectId,
+    reference: 'UTR4431',
+  });
   const woPower = await construction.createWorkOrder(ctx, {
     projectId,
     vendorId: idOf(electric),
@@ -372,7 +454,352 @@ async function main() {
     mode: 'upi',
   });
 
-  await plots.changePlotStatus(ctx, projectId, created[0]!.id, 'sold', 'Registry completed');
+  // ---------- Masters ----------
+  const C = { companyId: company._id, createdBy: admin._id };
+  const pid = new Types.ObjectId(projectId);
+  await Party.create([
+    {
+      ...C,
+      kind: 'land_owner',
+      name: 'Ram Prasad Patel',
+      phone: '+91 98270 10101',
+      pan: 'AJKPP4421M',
+      bankName: 'State Bank of India',
+      accountNumber: '30112244556',
+      ifsc: 'SBIN0001308',
+      landParcelIds: [new Types.ObjectId(idOf(parcelA))],
+      address: { city: 'Bhopal', state: 'Madhya Pradesh' },
+    },
+    { ...C, kind: 'land_owner', name: 'Kamla Bai', phone: '+91 98270 20202', landParcelIds: [new Types.ObjectId(idOf(parcelB))] },
+    {
+      ...C,
+      kind: 'partner',
+      name: 'Ravi Agarwal',
+      phone: '+91 98260 30303',
+      pan: 'AAKPA1122Q',
+      shareBp: 4_000,
+      contributionPaise: 2_00_00_000_00,
+      projectIds: [pid],
+    },
+    {
+      ...C,
+      kind: 'investor',
+      name: 'Meena Khurana',
+      phone: '+91 98260 40404',
+      shareBp: 1_500,
+      contributionPaise: 75_00_000_00,
+      projectIds: [pid],
+    },
+  ]);
+  const [sbi] = await Financer.create([
+    {
+      ...C,
+      name: 'State Bank of India',
+      type: 'bank',
+      branch: 'MP Nagar, Bhopal',
+      contactPerson: 'Rahul Dubey (HL desk)',
+      phone: '+91 75500 11223',
+      interestRateBp: 850,
+      approvedProjectIds: [pid],
+    },
+    {
+      ...C,
+      name: 'HDFC Bank Home Loans',
+      type: 'bank',
+      branch: 'Arera Colony',
+      contactPerson: 'Pooja Sen',
+      phone: '+91 75500 44556',
+      interestRateBp: 875,
+      approvedProjectIds: [pid],
+    },
+    { ...C, name: 'LIC Housing Finance', type: 'hfc', branch: 'New Market', interestRateBp: 860 },
+  ]);
+  const [registryAgent] = await Consultant.create([
+    {
+      ...C,
+      name: 'Sanjay Shrivastava',
+      type: 'registry_agent',
+      firm: 'Shrivastava Documentation',
+      phone: '+91 98930 50505',
+      feeNote: '₹5,000 per registry + actuals',
+    },
+    {
+      ...C,
+      name: 'Adv. Neelam Joshi',
+      type: 'advocate',
+      firm: 'Joshi & Associates',
+      phone: '+91 98930 60606',
+      registrationNo: 'MP/1234/2008',
+      feeNote: 'Title search ₹15,000 per parcel',
+    },
+    { ...C, name: 'CA Vivek Jain', type: 'chartered_accountant', phone: '+91 98930 70707' },
+  ]);
+  await ChargeMaster.create([
+    { ...C, projectId: null, name: 'Club membership', kind: 'club', basis: 'fixed', value: 75_000_00, gstBp: 1800, isMandatory: false },
+    {
+      ...C,
+      projectId: pid,
+      name: 'Maintenance deposit (2 years)',
+      kind: 'maintenance',
+      basis: 'per_sqft',
+      value: 36_00,
+      gstBp: 1800,
+      isMandatory: true,
+    },
+    { ...C, projectId: pid, name: 'Corner plot PLC', kind: 'plc', basis: 'percent', value: 500 },
+    { ...C, projectId: pid, name: 'Electricity connection', kind: 'electricity', basis: 'fixed', value: 45_000_00 },
+  ]);
+  await RateIndex.create({
+    ...C,
+    projectId: pid,
+    name: 'Rate revision – Diwali 2026',
+    ratePaisePerSqft: 2_350_00,
+    effectiveFrom: new Date(`${addDays(today, 10)}T00:00:00.000Z`),
+    notes: 'Approved by partners; apply on Dhanteras.',
+  });
+
+  // A tower of flats alongside the plots (unit types).
+  const towerC = await projects.createBlock(ctx, projectId, { name: 'Tower C (apartments)', code: 'C', phaseId: idOf(phase) });
+  for (const floor of [1, 2]) {
+    await plots.bulkCreatePlots(ctx, projectId, {
+      blockId: idOf(towerC),
+      prefix: `C-${floor}0`,
+      startNumber: 1,
+      count: 4,
+      category: 'residential',
+      unitType: 'flat',
+      floor,
+      configuration: floor === 1 ? '2 BHK' : '3 BHK',
+      areaX100: sqftToAreaX100(floor === 1 ? '1150' : '1480'),
+      ratePaisePerSqft: 4_200_00,
+      plcBp: 0,
+    });
+  }
+  await parking.bulkCreateParking(ctx, {
+    projectId,
+    blockId: idOf(towerC),
+    type: 'stilt',
+    level: 'Stilt',
+    prefix: 'S-',
+    startNumber: 1,
+    count: 12,
+    pricePaise: 2_50_000_00,
+  });
+  await parking.bulkCreateParking(ctx, { projectId, type: 'open', prefix: 'O-', startNumber: 1, count: 8, pricePaise: 0 });
+  const slots = await ParkingSlot.find({ companyId: company._id, code: { $in: ['S-1', 'S-2'] } })
+    .sort({ code: 1 })
+    .lean();
+  await parking.allotParking(ctx, String(slots[0]!._id), { bookingId: seeded[0]! });
+  await parking.allotParking(ctx, String(slots[1]!._id), { bookingId: seeded[2]! });
+
+  // ---------- Pre sales ----------
+  await WhatsappTemplate.create([
+    {
+      ...C,
+      name: 'Thank you for enquiring',
+      category: 'lead_followup',
+      body: 'Namaste {{name}} ji, thank you for your interest in {{project}}. I am {{executive}} from {{company}}. When can we show you the site? 🙏',
+    },
+    {
+      ...C,
+      name: 'Site visit reminder',
+      category: 'site_visit',
+      body: 'Hi {{name}}, a reminder of your site visit to {{project}} tomorrow. Location: https://maps.google.com/?q=Kolar+Road+Bhopal – {{executive}}, {{company}}',
+    },
+    {
+      ...C,
+      name: 'Installment reminder',
+      category: 'payment_reminder',
+      body: 'Dear {{name}}, {{amount_due}} is due on your booking {{booking_no}} (unit {{units}}) on {{due_date}}. Kindly pay to avoid late interest. – {{company}}',
+    },
+    {
+      ...C,
+      name: 'Demand letter sent',
+      category: 'demand',
+      body: 'Dear {{name}}, please find the payment demand for booking {{booking_no}}. Amount due: {{amount_due}}. Thank you – Accounts, {{company}}',
+    },
+    {
+      ...C,
+      name: 'Booking confirmed',
+      category: 'booking',
+      body: 'Congratulations {{name}}! Your booking {{booking_no}} for unit {{units}} at {{project}} is confirmed. Total consideration {{total_amount}}. – {{company}}',
+    },
+  ]);
+  await PortalIntegration.create([
+    { ...C, portal: '99acres', name: '99acres – Green Valley', projectId: pid, defaultAssigneeId: admin._id, token: newToken() },
+    { ...C, portal: 'website', name: 'Website enquiry form', projectId: pid, token: newToken() },
+  ]);
+  const portal = await PortalIntegration.findOne({ companyId: company._id, portal: '99acres' }).lean();
+  await receiveInboundLead(portal!.token, {
+    SENDER_NAME: 'Manish Gupta',
+    SENDER_MOBILE: '9827012345',
+    QUERY_MESSAGE: 'Interested in 1500 sqft corner plot, please call after 6 pm',
+  });
+  const quoteLead = await crm.createLead(ctx, {
+    projectId,
+    name: 'Harsh Vardhan',
+    phone: '+91 90000 77777',
+    source: '99acres',
+    assignedTo: String(admin._id),
+    interestedPlotIds: [],
+  });
+  const standardPlan = idOf(standard);
+  const q1 = await quotations.createQuotation(ctx, {
+    projectId,
+    plotIds: [created[20]!.id],
+    paymentPlanId: standardPlan,
+    leadId: idOf(quoteLead),
+    quoteDate: addDays(today, -3),
+    discountPaise: 0,
+    charges: [{ name: 'Club membership (incl. GST)', amountPaise: 88_500_00 }],
+    notes: 'Registry charges extra at actuals.',
+  });
+  await quotations.setQuotationStatus(ctx, idOf(q1), 'sent');
+  await quotations.createQuotation(ctx, {
+    projectId,
+    plotIds: [created[21]!.id, created[22]!.id],
+    paymentPlanId: idOf(emi),
+    prospectName: 'Walk-in: Mr. Bhatia',
+    prospectPhone: '+91 90000 88888',
+    quoteDate: today,
+    discountPaise: 0,
+    charges: [],
+  });
+
+  // ---------- Post sales ----------
+  await postsales.setBookingLoan(ctx, seeded[1]!, {
+    financerId: String(sbi!._id),
+    status: 'sanctioned',
+    sanctionedPaise: 20_00_000_00,
+    sanctionDate: addMonths(today, -2),
+    loanAccountNo: 'HL0098812',
+  });
+  await postsales.markAllotmentIssued(ctx, seeded[0]!, true, 'by hand');
+  await postsales.markAllotmentIssued(ctx, seeded[1]!, true, 'email');
+  await postsales.createSalesDocument(ctx, {
+    kind: 'agreement',
+    bookingId: seeded[0]!,
+    date: addMonths(today, -6),
+    details: {
+      executedOn: addMonths(today, -6),
+      registrationNumber: 'BPL/AGR/2026/5521',
+      stampDutyPaise: 1_32_000_00,
+      registrationFeePaise: 26_400_00,
+    },
+  });
+  await postsales.createSalesDocument(ctx, { kind: 'agreement', bookingId: seeded[1]!, date: addMonths(today, -2), details: {} });
+  await postsales.createSalesDocument(ctx, {
+    kind: 'registry',
+    bookingId: seeded[0]!,
+    date: addDays(today, -15),
+    overrideDues: false,
+    details: {
+      scheduledOn: addDays(today, -12),
+      registeredOn: addDays(today, -12),
+      deedNumber: 'BPL/2026/SD/10432',
+      subRegistrarOffice: 'Sub-Registrar, Bhopal (Kolar)',
+      stampDutyPaise: 2_10_000_00,
+      registrationFeePaise: 52_800_00,
+      consultantId: String(registryAgent!._id),
+    },
+  });
+  await postsales.createSalesDocument(ctx, {
+    kind: 'possession',
+    bookingId: seeded[0]!,
+    date: addDays(today, -5),
+    overrideDues: false,
+    details: { offeredOn: addDays(today, -5), possessionType: 'physical' },
+  });
+  await postsales.bulkDemand(ctx, { projectId, date: today });
+  await postsales.createFollowUp(ctx, {
+    bookingId: seeded[2]!,
+    type: 'call',
+    note: 'Customer says salary credited on 7th; will pay two EMIs',
+    promisedAmountPaise: 2_00_000_00,
+    promisedOn: addDays(today, 6),
+    nextFollowUpOn: addDays(today, 7),
+  });
+  await postsales.createFollowUp(ctx, {
+    bookingId: seeded[1]!,
+    type: 'visit',
+    note: 'Met at site office; loan disbursal awaited from SBI',
+    nextFollowUpOn: addDays(today, -1),
+  });
+
+  // ---------- Account ----------
+  await finance.createCashBankAccount(ctx, {
+    kind: 'bank',
+    name: 'HDFC – RERA collection (70%)',
+    bankName: 'HDFC Bank',
+    accountNumber: '50200071234567',
+    ifsc: 'HDFC0001987',
+    branch: 'Kolar Road',
+    accountType: 'current',
+    isReraAccount: true,
+    openingBalancePaise: 0,
+  });
+  await finance.createCashBankAccount(ctx, {
+    kind: 'cash',
+    name: 'Site office petty cash',
+    isReraAccount: false,
+    openingBalancePaise: 50_000_00,
+    openingDate: addMonths(today, -1),
+  });
+  for (const [i, chq] of ['712301', '712302', '712303'].entries()) {
+    await finance.createPdc(ctx, {
+      bookingId: seeded[2]!,
+      chequeNumber: chq,
+      bankName: 'Bank of Baroda',
+      branch: 'Habibganj',
+      chequeDate: addMonths(today, i - 1),
+      amountPaise: 1_00_000_00,
+    });
+  }
+  const firstPdc = await Pdc.findOne({ companyId: company._id, chequeNumber: '712301' }).lean();
+  await finance.depositPdc(ctx, String(firstPdc!._id), { depositedOn: addDays(today, -28) });
+  await finance.clearPdc(ctx, String(firstPdc!._id), { clearedOn: addDays(today, -26) });
+  await finance.createAdjustment(ctx, {
+    bookingId: seeded[3]!,
+    type: 'credit',
+    reason: 'discount',
+    amountPaise: 25_000_00,
+    date: addDays(today, -8),
+    narration: 'Diwali offer approved by MD',
+  });
+  await finance.createAdjustment(ctx, {
+    bookingId: seeded[2]!,
+    type: 'debit',
+    reason: 'late_fee',
+    amountPaise: 3_500_00,
+    date: addDays(today, -4),
+    narration: 'Interest on delayed EMIs (Aug–Sep)',
+  });
+  const otherIncome = await Account.findOne({ companyId: company._id, systemKey: 'other_income' }).lean();
+  await finance.createGstVoucher(ctx, {
+    direction: 'output',
+    date: addDays(today, -6),
+    invoiceNumber: 'MNT/26-27/014',
+    partyName: 'Green Valley Residents Association',
+    description: 'Maintenance charges – October',
+    taxableValuePaise: 1_20_000_00,
+    rateBp: 1800,
+    interState: false,
+    accountId: String(otherIncome!._id),
+    mode: 'neft',
+  });
+  await finance.createGstVoucher(ctx, {
+    direction: 'input',
+    date: addDays(today, -9),
+    invoiceNumber: 'UTC/7781',
+    partyName: 'UltraTech Cement',
+    partyGstin: '23AAACL6442L1Z9',
+    description: 'Cement – 600 bags for drains',
+    taxableValuePaise: 2_40_000_00,
+    rateBp: 2800,
+    interState: false,
+    accountId: String(devAccount!._id),
+    vendorId: idOf(roads),
+  });
   await plots.changePlotStatus(ctx, projectId, created[47]!.id, 'blocked', 'Reserved for management quota');
 
   console.log('\nSeed complete.');

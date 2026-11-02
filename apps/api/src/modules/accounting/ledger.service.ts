@@ -8,7 +8,13 @@ import { Account, JournalEntry } from './accounting.models';
  * Control accounts are maintained only by sub-ledger workflows (bookings, receipts, vendor
  * bills, broker commissions), so party ledgers always reconcile with the books.
  */
-export const CONTROL_ACCOUNT_KEYS: SystemAccountKey[] = ['customer_receivable', 'customer_advance', 'refund_payable', 'vendor_payable', 'broker_payable'];
+export const CONTROL_ACCOUNT_KEYS: SystemAccountKey[] = [
+  'customer_receivable',
+  'customer_advance',
+  'refund_payable',
+  'vendor_payable',
+  'broker_payable',
+];
 
 const VOUCHER_PREFIX: Record<VoucherType, string> = {
   journal: 'JV',
@@ -183,10 +189,17 @@ export async function reverseJournal(actor: Actor, entryId: Types.ObjectId, reas
  * Cash/bank account for money in or out: an explicit active cash/bank asset account, or the
  * system Cash (mode = cash) / Bank account.
  */
-export async function resolveCashAccountFor(companyId: Types.ObjectId, accountId: string | undefined, mode: string, session: ClientSession) {
+export async function resolveCashAccountFor(
+  companyId: Types.ObjectId,
+  accountId: string | undefined,
+  mode: string,
+  session: ClientSession,
+) {
   if (accountId) {
     if (!Types.ObjectId.isValid(accountId)) throw businessRule('Choose an active cash or bank account');
-    const acc = await Account.findOne({ companyId, _id: new Types.ObjectId(accountId), type: 'asset', isActive: true }).session(session).lean();
+    const acc = await Account.findOne({ companyId, _id: new Types.ObjectId(accountId), type: 'asset', isActive: true })
+      .session(session)
+      .lean();
     const isCashLike = acc && (acc.systemKey === 'cash' || acc.systemKey === 'bank' || acc.isBank || !acc.systemKey);
     if (!isCashLike) throw businessRule('Choose an active cash or bank account');
     return acc._id;

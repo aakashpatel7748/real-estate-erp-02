@@ -53,7 +53,11 @@ export function CancellationsPage() {
   const q = useQuery({ queryKey: ['cancellations', query], queryFn: () => api.page<Cancellation>('/post-sales/cancellations', query) });
   const summary = useQuery({
     queryKey: ['cancellations', 'summary', projectId],
-    queryFn: () => api.get<{ count: number; chargesPaise: number; refundablePaise: number; refundedPaise: number; pendingRefundPaise: number }>('/post-sales/cancellations/summary', { projectId: projectId ?? undefined }),
+    queryFn: () =>
+      api.get<{ count: number; chargesPaise: number; refundablePaise: number; refundedPaise: number; pendingRefundPaise: number }>(
+        '/post-sales/cancellations/summary',
+        { projectId: projectId ?? undefined },
+      ),
   });
   const [cancelOpen, setCancelOpen] = React.useState(false);
   const columns: Column<Cancellation>[] = [
@@ -61,9 +65,19 @@ export function CancellationsPage() {
     { key: 'customer', header: 'Customer', cell: (r) => r.customerId?.name ?? '—' },
     { key: 'units', header: 'Units', cell: (r) => `${r.projectId?.name ?? ''} · ${r.units.join(', ')}` },
     { key: 'date', header: 'Cancelled', sortKey: 'closedAt', cell: (r) => (r.closedAt ? formatDate(r.closedAt) : '—') },
-    { key: 'reason', header: 'Reason', hideOnMobile: true, cell: (r) => <span className="line-clamp-1 max-w-xs">{r.status === 'expired' ? 'Reservation expired' : r.cancellation?.reason}</span> },
+    {
+      key: 'reason',
+      header: 'Reason',
+      hideOnMobile: true,
+      cell: (r) => <span className="line-clamp-1 max-w-xs">{r.status === 'expired' ? 'Reservation expired' : r.cancellation?.reason}</span>,
+    },
     { key: 'received', header: 'Received', align: 'right', cell: (r) => <span className="tabular">{formatINR(r.receivedPaise)}</span> },
-    { key: 'charge', header: 'Retained', align: 'right', cell: (r) => <span className="tabular">{formatINR(r.cancellation?.chargePaise ?? 0)}</span> },
+    {
+      key: 'charge',
+      header: 'Retained',
+      align: 'right',
+      cell: (r) => <span className="tabular">{formatINR(r.cancellation?.chargePaise ?? 0)}</span>,
+    },
     {
       key: 'refund',
       header: 'Refund',
@@ -71,7 +85,13 @@ export function CancellationsPage() {
       sortKey: 'refundablePaise',
       cell: (r) => {
         const pending = r.refundablePaise - r.refundedPaise;
-        return pending > 0 ? <Badge variant="warning">{formatINR(pending)} due</Badge> : r.refundablePaise > 0 ? <Badge variant="success">Settled</Badge> : <span className="text-muted-foreground">—</span>;
+        return pending > 0 ? (
+          <Badge variant="warning">{formatINR(pending)} due</Badge>
+        ) : r.refundablePaise > 0 ? (
+          <Badge variant="success">Settled</Badge>
+        ) : (
+          <span className="text-muted-foreground">—</span>
+        );
       },
     },
   ];
@@ -93,11 +113,22 @@ export function CancellationsPage() {
         <StatCard label="Cancellations" value={s?.count ?? '—'} icon={XCircle} loading={summary.isPending} />
         <StatCard label="Charges retained" value={formatINR(s?.chargesPaise ?? 0)} loading={summary.isPending} />
         <StatCard label="Refunded" value={formatINR(s?.refundedPaise ?? 0)} tone="success" loading={summary.isPending} />
-        <StatCard label="Refunds pending" value={formatINR(s?.pendingRefundPaise ?? 0)} icon={IndianRupee} tone={s?.pendingRefundPaise ? 'warning' : 'default'} loading={summary.isPending} />
+        <StatCard
+          label="Refunds pending"
+          value={formatINR(s?.pendingRefundPaise ?? 0)}
+          icon={IndianRupee}
+          tone={s?.pendingRefundPaise ? 'warning' : 'default'}
+          loading={summary.isPending}
+        />
       </div>
       <div className="mb-4 flex flex-wrap items-center gap-2">
         <SearchInput value={lp.q} onChange={lp.setQ} placeholder="Search booking no." className="w-full sm:w-64" />
-        <Select className="h-9 w-auto" value={refund ?? ''} onChange={(e) => lp.setFilter('refund', e.target.value || undefined)} aria-label="Refund">
+        <Select
+          className="h-9 w-auto"
+          value={refund ?? ''}
+          onChange={(e) => lp.setFilter('refund', e.target.value || undefined)}
+          aria-label="Refund"
+        >
           <option value="">All</option>
           <option value="pending">Refund pending</option>
           <option value="settled">Refund settled</option>
@@ -149,21 +180,34 @@ function CancelBookingDialog({ open, onOpenChange }: { open: boolean; onOpenChan
   });
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent title="Cancel a booking" description="Releases the units and parking, reverses the sale and moves money received to refunds payable.">
+      <DialogContent
+        title="Cancel a booking"
+        description="Releases the units and parking, reverses the sale and moves money received to refunds payable."
+      >
         <Field label="Booking" htmlFor="cx-booking" required>
           <BookingPicker id="cx-booking" value={booking} onChange={setBooking} />
         </Field>
         <Field label="Reason" htmlFor="cx-reason" required>
           <Textarea rows={2} value={reason} onChange={(e) => setReason(e.target.value)} />
         </Field>
-        <Field label="Cancellation charges retained" htmlFor="cx-charge" error={chargeOk ? undefined : 'Enter an amount'} hint="Cannot exceed the amount received">
+        <Field
+          label="Cancellation charges retained"
+          htmlFor="cx-charge"
+          error={chargeOk ? undefined : 'Enter an amount'}
+          hint="Cannot exceed the amount received"
+        >
           <MoneyInput value={charge} onChange={(e) => setCharge(e.target.value)} />
         </Field>
         <DialogFooter>
           <Button variant="outline" onClick={() => onOpenChange(false)}>
             Keep booking
           </Button>
-          <Button variant="destructive" loading={save.isPending} disabled={!booking || !reason.trim() || !chargeOk} onClick={() => save.mutate()}>
+          <Button
+            variant="destructive"
+            loading={save.isPending}
+            disabled={!booking || !reason.trim() || !chargeOk}
+            onClick={() => save.mutate()}
+          >
             Cancel booking
           </Button>
         </DialogFooter>
@@ -197,11 +241,15 @@ export function AllotmentsPage() {
   const issued = lp.filter('issued');
   const query = { ...lp.query, issued, projectId: projectId ?? undefined };
   const q = useQuery({ queryKey: ['allotments', query], queryFn: () => api.page<Allotment>('/post-sales/allotments', query) });
-  const summary = useQuery({ queryKey: ['allotments', 'summary', projectId], queryFn: () => api.get<{ issued: number; pending: number }>('/post-sales/allotments/summary', { projectId: projectId ?? undefined }) });
+  const summary = useQuery({
+    queryKey: ['allotments', 'summary', projectId],
+    queryFn: () => api.get<{ issued: number; pending: number }>('/post-sales/allotments/summary', { projectId: projectId ?? undefined }),
+  });
   const [issuing, setIssuing] = React.useState<Allotment | null>(null);
   const [via, setVia] = React.useState('by hand');
   const mark = useMutation({
-    mutationFn: ({ row, on }: { row: Allotment; on: boolean }) => api.post(`/post-sales/bookings/${row.id}/allotment`, { issued: on, via: on ? via : undefined }),
+    mutationFn: ({ row, on }: { row: Allotment; on: boolean }) =>
+      api.post(`/post-sales/bookings/${row.id}/allotment`, { issued: on, via: on ? via : undefined }),
     onSuccess: (_d, v) => {
       qc.invalidateQueries({ queryKey: ['allotments'] });
       setIssuing(null);
@@ -223,14 +271,24 @@ export function AllotmentsPage() {
     { key: 'date', header: 'Booked on', sortKey: 'bookingDate', cell: (r) => formatDate(r.bookingDate) },
     { key: 'customer', header: 'Allottee', cell: (r) => r.customerId?.name ?? '—' },
     { key: 'units', header: 'Units', cell: (r) => `${r.projectId?.name ?? ''} · ${r.units.join(', ')}` },
-    { key: 'value', header: 'Consideration', sortKey: 'netAmountPaise', align: 'right', cell: (r) => <span className="tabular">{formatINR(r.netAmountPaise)}</span> },
+    {
+      key: 'value',
+      header: 'Consideration',
+      sortKey: 'netAmountPaise',
+      align: 'right',
+      cell: (r) => <span className="tabular">{formatINR(r.netAmountPaise)}</span>,
+    },
     {
       key: 'issued',
       header: 'Letter',
       cell: (r) =>
         r.allotment?.issuedAt ? (
           <span className="text-sm">
-            <Badge variant="success">Issued</Badge> <span className="text-muted-foreground">{formatDate(r.allotment.issuedAt)}{r.allotment.deliveredVia ? ` · ${r.allotment.deliveredVia}` : ''}</span>
+            <Badge variant="success">Issued</Badge>{' '}
+            <span className="text-muted-foreground">
+              {formatDate(r.allotment.issuedAt)}
+              {r.allotment.deliveredVia ? ` · ${r.allotment.deliveredVia}` : ''}
+            </span>
           </span>
         ) : (
           <Badge variant="warning">Pending</Badge>
@@ -261,14 +319,27 @@ export function AllotmentsPage() {
   ];
   return (
     <>
-      <PageHeader title="Allotment Letters" description="Generate allotment letters for confirmed bookings and track which have been handed over" />
+      <PageHeader
+        title="Allotment Letters"
+        description="Generate allotment letters for confirmed bookings and track which have been handed over"
+      />
       <div className="mb-6 grid gap-4 sm:grid-cols-2">
-        <StatCard label="Letters pending" value={summary.data?.pending ?? '—'} tone={summary.data?.pending ? 'warning' : 'default'} loading={summary.isPending} />
+        <StatCard
+          label="Letters pending"
+          value={summary.data?.pending ?? '—'}
+          tone={summary.data?.pending ? 'warning' : 'default'}
+          loading={summary.isPending}
+        />
         <StatCard label="Letters issued" value={summary.data?.issued ?? '—'} tone="success" loading={summary.isPending} />
       </div>
       <div className="mb-4 flex flex-wrap items-center gap-2">
         <SearchInput value={lp.q} onChange={lp.setQ} placeholder="Search booking no." className="w-full sm:w-64" />
-        <Select className="h-9 w-auto" value={issued ?? ''} onChange={(e) => lp.setFilter('issued', e.target.value || undefined)} aria-label="Letter status">
+        <Select
+          className="h-9 w-auto"
+          value={issued ?? ''}
+          onChange={(e) => lp.setFilter('issued', e.target.value || undefined)}
+          aria-label="Letter status"
+        >
           <option value="">All</option>
           <option value="false">Pending</option>
           <option value="true">Issued</option>
@@ -313,4 +384,3 @@ export function AllotmentsPage() {
     </>
   );
 }
-

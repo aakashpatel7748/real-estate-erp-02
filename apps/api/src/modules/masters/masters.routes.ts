@@ -14,7 +14,9 @@ import {
   partySchema,
   rateIndexSchema,
   requiredText,
-  type ChargeMasterInput, patchSchema } from '@erp/shared';
+  type ChargeMasterInput,
+  patchSchema,
+} from '@erp/shared';
 import { authorize } from '../../middleware/auth';
 import { body, params, query, validate } from '../../middleware/validate';
 import { businessRule } from '../../utils/errors';
@@ -67,7 +69,8 @@ export const financersRouter = crudRouter({
   populate: [{ path: 'approvedProjectIds', select: 'name code' }],
   filter: (q) => (q.type ? { type: q.type } : {}),
   prepare: async (ctx, input) => {
-    if (input.approvedProjectIds) input.approvedProjectIds = await assertRefs(ctx, Project, input.approvedProjectIds as string[], 'Project');
+    if (input.approvedProjectIds)
+      input.approvedProjectIds = await assertRefs(ctx, Project, input.approvedProjectIds as string[], 'Project');
     return input;
   },
   enrich: svc.enrichFinancers,
@@ -145,7 +148,13 @@ export const rateIndexesRouter = crudRouter({
     const projectId = (input.projectId as string | undefined) ?? (existing ? String(existing.projectId) : undefined);
     if (input.projectId) await assertRefs(ctx, Project, [projectId], 'Project', { project: true });
     if (input.phaseId) {
-      if (!(await ProjectPhase.exists({ companyId: ctx.companyId, projectId: toObjectId(projectId!), _id: toObjectId(input.phaseId as string) })))
+      if (
+        !(await ProjectPhase.exists({
+          companyId: ctx.companyId,
+          projectId: toObjectId(projectId!),
+          _id: toObjectId(input.phaseId as string),
+        }))
+      )
         throw businessRule('Phase does not belong to this project');
     }
     if (input.blockId) {
@@ -174,18 +183,26 @@ parkingRouter.get('/', authorize('inventory.read'), validate({ query: parkingLis
 parkingRouter.get('/summary', authorize('inventory.read'), validate({ query: parkingListQuerySchema }), async (req, res) =>
   ok(res, (await svc.listParking(getCtx(req), { ...query<{ page: number }>(req), page: 1, pageSize: 1 })).summary),
 );
-parkingRouter.post('/', authorize('inventory.create'), validate({ body: parkingSlotSchema }), async (req, res) => created(res, await svc.createParking(getCtx(req), body(req))));
+parkingRouter.post('/', authorize('inventory.create'), validate({ body: parkingSlotSchema }), async (req, res) =>
+  created(res, await svc.createParking(getCtx(req), body(req))),
+);
 parkingRouter.post('/bulk', authorize('inventory.create'), validate({ body: parkingBulkSchema }), async (req, res) =>
   created(res, await svc.bulkCreateParking(getCtx(req), body(req))),
 );
-parkingRouter.patch('/:id', authorize('inventory.update'), validate({ params: idParam, body: patchSchema(parkingSlotSchema.omit({ projectId: true })) }), async (req, res) =>
-  ok(res, await svc.updateParking(getCtx(req), params<Id>(req).id, body(req))),
+parkingRouter.patch(
+  '/:id',
+  authorize('inventory.update'),
+  validate({ params: idParam, body: patchSchema(parkingSlotSchema.omit({ projectId: true })) }),
+  async (req, res) => ok(res, await svc.updateParking(getCtx(req), params<Id>(req).id, body(req))),
 );
 parkingRouter.post('/:id/allot', authorize('inventory.status'), validate({ params: idParam, body: parkingAllotSchema }), async (req, res) =>
   ok(res, await svc.allotParking(getCtx(req), params<Id>(req).id, body(req))),
 );
-parkingRouter.post('/:id/release', authorize('inventory.status'), validate({ params: idParam, body: z.object({ note: requiredText('Reason', 300) }) }), async (req, res) =>
-  ok(res, await svc.releaseParking(getCtx(req), params<Id>(req).id, body<{ note: string }>(req).note)),
+parkingRouter.post(
+  '/:id/release',
+  authorize('inventory.status'),
+  validate({ params: idParam, body: z.object({ note: requiredText('Reason', 300) }) }),
+  async (req, res) => ok(res, await svc.releaseParking(getCtx(req), params<Id>(req).id, body<{ note: string }>(req).note)),
 );
 parkingRouter.post(
   '/:id/block',

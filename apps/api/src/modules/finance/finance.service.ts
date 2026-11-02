@@ -52,7 +52,14 @@ export async function listCashBankAccounts(ctx: TenantContext) {
     { $match: { companyId: ctx.companyId, 'lines.accountId': { $in: ids } } },
     { $unwind: '$lines' },
     { $match: { 'lines.accountId': { $in: ids } } },
-    { $group: { _id: '$lines.accountId', debit: { $sum: '$lines.debitPaise' }, credit: { $sum: '$lines.creditPaise' }, last: { $max: '$date' } } },
+    {
+      $group: {
+        _id: '$lines.accountId',
+        debit: { $sum: '$lines.debitPaise' },
+        credit: { $sum: '$lines.creditPaise' },
+        last: { $max: '$date' },
+      },
+    },
   ]);
   const byId = new Map(balances.map((b) => [String(b._id), b]));
   return accounts.map((a) => {
@@ -119,7 +126,11 @@ export async function createCashBankAccount(ctx: TenantContext, input: CashBankA
         session,
       );
     }
-    await audit(ctx, { action: 'accounting.cash_bank_create', entityType: 'account', entityId: account!._id, summary: `${code} ${input.name}` }, session);
+    await audit(
+      ctx,
+      { action: 'accounting.cash_bank_create', entityType: 'account', entityId: account!._id, summary: `${code} ${input.name}` },
+      session,
+    );
     return account!.toJSON();
   });
 }
@@ -153,7 +164,18 @@ async function activeBooking(ctx: TenantContext, bookingId: string | Types.Objec
 
 export async function listPdcs(
   ctx: TenantContext,
-  q: { page: number; pageSize: number; sort?: string; q?: string; projectId?: string; status?: string; bookingId?: string; due?: string; from?: string; to?: string },
+  q: {
+    page: number;
+    pageSize: number;
+    sort?: string;
+    q?: string;
+    projectId?: string;
+    status?: string;
+    bookingId?: string;
+    due?: string;
+    from?: string;
+    to?: string;
+  },
 ) {
   const base = scopedFilter(ctx, q.projectId);
   const filter: Record<string, unknown> = { ...base };
@@ -225,7 +247,12 @@ export async function createPdc(ctx: TenantContext, input: PdcInput) {
       history: [{ status: 'received', by: ctx.userId }],
       createdBy: ctx.userId,
     });
-    await audit(ctx, { action: 'pdc.create', entityType: 'pdc', entityId: pdc._id, summary: `Chq ${input.chequeNumber} ${formatINR(input.amountPaise)} for ${booking.bookingNumber}` });
+    await audit(ctx, {
+      action: 'pdc.create',
+      entityType: 'pdc',
+      entityId: pdc._id,
+      summary: `Chq ${input.chequeNumber} ${formatINR(input.amountPaise)} for ${booking.bookingNumber}`,
+    });
     return pdc.toJSON();
   } catch (err) {
     if ((err as { code?: number }).code === 11000) throw conflict('This cheque is already recorded for the booking');
@@ -278,7 +305,10 @@ export async function clearPdc(ctx: TenantContext, id: string, input: { clearedO
     const paymentId = payment.id ?? String(payment._id);
     await Pdc.updateOne(
       { companyId: ctx.companyId, _id: pdc._id, status: 'clearing' },
-      { $set: { status: 'cleared', clearedOn: day(input.clearedOn), paymentId: toObjectId(paymentId) }, $push: { history: { status: 'cleared', note: payment.number, by: ctx.userId } } },
+      {
+        $set: { status: 'cleared', clearedOn: day(input.clearedOn), paymentId: toObjectId(paymentId) },
+        $push: { history: { status: 'cleared', note: payment.number, by: ctx.userId } },
+      },
     );
     await audit(ctx, { action: 'pdc.clear', entityType: 'pdc', entityId: pdc._id, summary: `Receipt ${payment.number}` });
     return { id: String(pdc._id), status: 'cleared', paymentId, receiptNumber: payment.number };
@@ -290,7 +320,14 @@ export async function clearPdc(ctx: TenantContext, id: string, input: { clearedO
 
 export async function bouncePdc(ctx: TenantContext, id: string, input: { bouncedOn: string; reason: string }) {
   const pdc = await loadPdc(ctx, id);
-  await movePdc(ctx, pdc._id, ['received', 'deposited'], 'bounced', { bouncedOn: day(input.bouncedOn), bounceReason: input.reason }, input.reason);
+  await movePdc(
+    ctx,
+    pdc._id,
+    ['received', 'deposited'],
+    'bounced',
+    { bouncedOn: day(input.bouncedOn), bounceReason: input.reason },
+    input.reason,
+  );
   await audit(ctx, { action: 'pdc.bounce', entityType: 'pdc', entityId: pdc._id, changes: input });
   return { id: String(pdc._id), status: 'bounced' };
 }
@@ -352,12 +389,18 @@ const DEFAULT_ADJ_ACCOUNT: Record<string, SystemAccountKey> = {
 
 async function adjustmentAccount(ctx: TenantContext, input: LedgerAdjustmentInput, session: ClientSession) {
   if (!input.accountId) {
-    const key = input.type === 'debit' && ['discount', 'waiver', 'rounding'].includes(input.reason) ? 'other_income' : DEFAULT_ADJ_ACCOUNT[input.reason]!;
+    const key =
+      input.type === 'debit' && ['discount', 'waiver', 'rounding'].includes(input.reason)
+        ? 'other_income'
+        : DEFAULT_ADJ_ACCOUNT[input.reason]!;
     return systemAccountId(ctx.companyId, key, session);
   }
-  const acc = await Account.findOne({ companyId: ctx.companyId, _id: toObjectId(input.accountId), isActive: true }).session(session).lean();
+  const acc = await Account.findOne({ companyId: ctx.companyId, _id: toObjectId(input.accountId), isActive: true })
+    .session(session)
+    .lean();
   if (!acc || !['income', 'expense'].includes(acc.type)) throw badRequest('Choose an active income or expense account');
-  if (acc.systemKey && CONTROL_ACCOUNT_KEYS.includes(acc.systemKey as SystemAccountKey)) throw badRequest('Choose an income or expense account');
+  if (acc.systemKey && CONTROL_ACCOUNT_KEYS.includes(acc.systemKey as SystemAccountKey))
+    throw badRequest('Choose an income or expense account');
   return acc._id;
 }
 
@@ -368,7 +411,9 @@ function instStatus(amount: number, paid: number) {
 
 export async function createAdjustment(ctx: TenantContext, input: LedgerAdjustmentInput) {
   return withTransaction(async (session) => {
-    const booking = await Booking.findOne({ companyId: ctx.companyId, _id: toObjectId(input.bookingId) }).session(session).lean();
+    const booking = await Booking.findOne({ companyId: ctx.companyId, _id: toObjectId(input.bookingId) })
+      .session(session)
+      .lean();
     if (!booking) throw notFound('Booking');
     assertProjectAccess(ctx, booking.projectId);
     if (!['reserved', 'booked'].includes(booking.status)) throw businessRule(`Adjustments cannot be made on a ${booking.status} booking`);
@@ -401,7 +446,10 @@ export async function createAdjustment(ctx: TenantContext, input: LedgerAdjustme
         remaining -= take;
       }
     } else {
-      const last = await Installment.findOne({ companyId: ctx.companyId, bookingId: booking._id }).sort({ sequence: -1 }).session(session).lean();
+      const last = await Installment.findOne({ companyId: ctx.companyId, bookingId: booking._id })
+        .sort({ sequence: -1 })
+        .session(session)
+        .lean();
       const [inst] = await Installment.create(
         [
           {
@@ -475,7 +523,12 @@ export async function createAdjustment(ctx: TenantContext, input: LedgerAdjustme
     );
     await audit(
       ctx,
-      { action: 'accounting.adjustment', entityType: 'booking', entityId: booking._id, summary: `${number} ${input.type} ${formatINR(input.amountPaise)}` },
+      {
+        action: 'accounting.adjustment',
+        entityType: 'booking',
+        entityId: booking._id,
+        summary: `${number} ${input.type} ${formatINR(input.amountPaise)}`,
+      },
       session,
     );
     return adj!.toJSON();
@@ -484,7 +537,9 @@ export async function createAdjustment(ctx: TenantContext, input: LedgerAdjustme
 
 export async function reverseAdjustment(ctx: TenantContext, id: string, reason: string) {
   return withTransaction(async (session) => {
-    const adj = await LedgerAdjustment.findOne({ companyId: ctx.companyId, _id: toObjectId(id) }).session(session).lean();
+    const adj = await LedgerAdjustment.findOne({ companyId: ctx.companyId, _id: toObjectId(id) })
+      .session(session)
+      .lean();
     if (!adj) throw notFound('Adjustment');
     assertProjectAccess(ctx, adj.projectId);
     if (adj.status !== 'posted') throw businessRule('This adjustment has already been reversed');
@@ -495,8 +550,13 @@ export async function reverseAdjustment(ctx: TenantContext, id: string, reason: 
       const inst = await Installment.findOne({ companyId: ctx.companyId, _id: e.installmentId }).session(session).lean();
       if (!inst) throw businessRule('An installment changed by this adjustment no longer exists');
       if (e.created) {
-        if (inst.paidPaise > 0) throw businessRule('The charge has already been (partly) paid; reverse the receipt first or post a credit note');
-        await Installment.updateOne({ companyId: ctx.companyId, _id: inst._id, paidPaise: 0 }, { $set: { status: 'cancelled' } }, { session });
+        if (inst.paidPaise > 0)
+          throw businessRule('The charge has already been (partly) paid; reverse the receipt first or post a credit note');
+        await Installment.updateOne(
+          { companyId: ctx.companyId, _id: inst._id, paidPaise: 0 },
+          { $set: { status: 'cancelled' } },
+          { session },
+        );
       } else {
         const amount = inst.amountPaise - (e.deltaPaise ?? 0);
         await Installment.updateOne(
@@ -508,13 +568,21 @@ export async function reverseAdjustment(ctx: TenantContext, id: string, reason: 
     }
     const rev = await reverseJournal(ctx, adj.journalEntryId!, reason, session, todayInIndia());
     const delta = adj.type === 'credit' ? adj.amountPaise : -adj.amountPaise;
-    await Booking.updateOne({ companyId: ctx.companyId, _id: booking._id }, { $inc: { netAmountPaise: delta, adjustmentsPaise: delta } }, { session });
+    await Booking.updateOne(
+      { companyId: ctx.companyId, _id: booking._id },
+      { $inc: { netAmountPaise: delta, adjustmentsPaise: delta } },
+      { session },
+    );
     await LedgerAdjustment.updateOne(
       { companyId: ctx.companyId, _id: adj._id, status: 'posted' },
       { $set: { status: 'reversed', reversal: { at: new Date(), by: ctx.userId, reason, journalEntryId: rev._id } } },
       { session },
     );
-    await audit(ctx, { action: 'accounting.adjustment_reverse', entityType: 'booking', entityId: booking._id, summary: adj.number, changes: { reason } }, session);
+    await audit(
+      ctx,
+      { action: 'accounting.adjustment_reverse', entityType: 'booking', entityId: booking._id, summary: adj.number, changes: { reason } },
+      session,
+    );
     return { id: String(adj._id), status: 'reversed' };
   });
 }
@@ -559,16 +627,25 @@ export function gstSplit(taxablePaise: number, rateBp: number, interState: boole
 
 export async function createGstVoucher(ctx: TenantContext, input: GstVoucherInput) {
   return withTransaction(async (session) => {
-    const acc = await Account.findOne({ companyId: ctx.companyId, _id: toObjectId(input.accountId), isActive: true }).session(session).lean();
+    const acc = await Account.findOne({ companyId: ctx.companyId, _id: toObjectId(input.accountId), isActive: true })
+      .session(session)
+      .lean();
     const allowed = input.direction === 'output' ? ['income'] : ['expense', 'asset'];
-    if (!acc || !allowed.includes(acc.type) || (acc.systemKey && (CONTROL_ACCOUNT_KEYS as string[]).includes(acc.systemKey)) || acc.systemKey?.startsWith('gst_')) {
+    if (
+      !acc ||
+      !allowed.includes(acc.type) ||
+      (acc.systemKey && (CONTROL_ACCOUNT_KEYS as string[]).includes(acc.systemKey)) ||
+      acc.systemKey?.startsWith('gst_')
+    ) {
       throw badRequest(input.direction === 'output' ? 'Choose an income account' : 'Choose an expense or asset account');
     }
     if (input.projectId) assertProjectAccess(ctx, input.projectId);
     let vendorId: Types.ObjectId | undefined;
     let settlementAccountId: Types.ObjectId | undefined;
     if (input.vendorId) {
-      const vendor = await Vendor.findOne({ companyId: ctx.companyId, _id: toObjectId(input.vendorId) }).session(session).lean();
+      const vendor = await Vendor.findOne({ companyId: ctx.companyId, _id: toObjectId(input.vendorId) })
+        .session(session)
+        .lean();
       if (!vendor) throw badRequest('Vendor not found');
       vendorId = vendor._id;
     } else {
@@ -625,14 +702,20 @@ export async function createGstVoucher(ctx: TenantContext, input: GstVoucherInpu
       ],
       { session },
     );
-    await audit(ctx, { action: 'accounting.gst_voucher', entityType: 'gst_voucher', entityId: voucherId, summary: `${number} ${formatINR(tax.total)}` }, session);
+    await audit(
+      ctx,
+      { action: 'accounting.gst_voucher', entityType: 'gst_voucher', entityId: voucherId, summary: `${number} ${formatINR(tax.total)}` },
+      session,
+    );
     return voucher!.toJSON();
   });
 }
 
 export async function reverseGstVoucher(ctx: TenantContext, id: string, reason: string) {
   return withTransaction(async (session) => {
-    const v = await GstVoucher.findOne({ companyId: ctx.companyId, _id: toObjectId(id) }).session(session).lean();
+    const v = await GstVoucher.findOne({ companyId: ctx.companyId, _id: toObjectId(id) })
+      .session(session)
+      .lean();
     if (!v) throw notFound('GST voucher');
     if (v.status !== 'posted') throw businessRule('This voucher has already been reversed');
     if (v.vendorId) {
@@ -645,7 +728,11 @@ export async function reverseGstVoucher(ctx: TenantContext, id: string, reason: 
       { $set: { status: 'reversed', reversal: { at: new Date(), by: ctx.userId, reason, journalEntryId: rev._id } } },
       { session },
     );
-    await audit(ctx, { action: 'accounting.gst_voucher_reverse', entityType: 'gst_voucher', entityId: v._id, changes: { reason } }, session);
+    await audit(
+      ctx,
+      { action: 'accounting.gst_voucher_reverse', entityType: 'gst_voucher', entityId: v._id, changes: { reason } },
+      session,
+    );
     return { id: String(v._id), status: 'reversed' };
   });
 }

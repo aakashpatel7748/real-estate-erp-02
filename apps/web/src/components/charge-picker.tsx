@@ -54,7 +54,8 @@ export function ChargePicker({
         .filter((r) => !r.masterId || byId.has(r.masterId))
         .map((r) => (r.masterId ? { ...r, name: byId.get(r.masterId)!.name, amount: paiseToInput(byId.get(r.masterId)!.amountPaise) } : r));
       for (const c of q.data) {
-        if (c.isMandatory && !dismissed.current.has(c.id) && !next.some((r) => r.masterId === c.id)) next.push({ name: c.name, amount: paiseToInput(c.amountPaise), masterId: c.id });
+        if (c.isMandatory && !dismissed.current.has(c.id) && !next.some((r) => r.masterId === c.id))
+          next.push({ name: c.name, amount: paiseToInput(c.amountPaise), masterId: c.id });
       }
       return JSON.stringify(next) === JSON.stringify(rows) ? rows : next;
     });
@@ -65,7 +66,9 @@ export function ChargePicker({
     const on = charges.some((r) => r.masterId === c.id);
     if (on) dismissed.current.add(c.id);
     else dismissed.current.delete(c.id);
-    setCharges((rows) => (on ? rows.filter((r) => r.masterId !== c.id) : [...rows, { name: c.name, amount: paiseToInput(c.amountPaise), masterId: c.id }]));
+    setCharges((rows) =>
+      on ? rows.filter((r) => r.masterId !== c.id) : [...rows, { name: c.name, amount: paiseToInput(c.amountPaise), masterId: c.id }],
+    );
   };
   return (
     <div className="mb-3">

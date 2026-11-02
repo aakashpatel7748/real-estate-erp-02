@@ -7,7 +7,18 @@ import { api, errorMessage, fieldErrors } from '@/lib/api';
 import { formatDateTime, titleCase } from '@/lib/format';
 import { useAuth } from '@/features/auth/auth-context';
 import { Button } from '@/components/ui/button';
-import { Badge, Card, CardContent, CardDescription, CardHeader, CardTitle, Checkbox, Input, Label, Textarea } from '@/components/ui/primitives';
+import {
+  Badge,
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+  Checkbox,
+  Input,
+  Label,
+  Textarea,
+} from '@/components/ui/primitives';
 import { ConfirmDialog, Dialog, DialogContent, DialogFooter } from '@/components/ui/overlays';
 import { Field, PageHeader } from '@/components/common';
 import { EmptyState, ErrorState, PageSkeleton } from '@/components/states';
@@ -96,13 +107,17 @@ export function LeadSettingsPage() {
                     id={`src-${s.key}`}
                     checked={s.active}
                     disabled={!editable || s.key === 'other'}
-                    onCheckedChange={(c) => setForm({ ...form, sources: form.sources.map((x, j) => (j === i ? { ...x, active: c === true } : x)) })}
+                    onCheckedChange={(c) =>
+                      setForm({ ...form, sources: form.sources.map((x, j) => (j === i ? { ...x, active: c === true } : x)) })
+                    }
                     aria-label={`${s.label} active`}
                   />
                   <Input
                     value={s.label}
                     disabled={!editable}
-                    onChange={(e) => setForm({ ...form, sources: form.sources.map((x, j) => (j === i ? { ...x, label: e.target.value } : x)) })}
+                    onChange={(e) =>
+                      setForm({ ...form, sources: form.sources.map((x, j) => (j === i ? { ...x, label: e.target.value } : x)) })
+                    }
                     className="h-8"
                     aria-label={`Label for ${s.key}`}
                   />
@@ -112,7 +127,12 @@ export function LeadSettingsPage() {
             </ul>
             {editable && (
               <div className="mt-3 flex gap-2">
-                <Input value={newSource} onChange={(e) => setNewSource(e.target.value)} placeholder="New source, e.g. Radio FM" onKeyDown={(e) => e.key === 'Enter' && addSource()} />
+                <Input
+                  value={newSource}
+                  onChange={(e) => setNewSource(e.target.value)}
+                  placeholder="New source, e.g. Radio FM"
+                  onKeyDown={(e) => e.key === 'Enter' && addSource()}
+                />
                 <Button variant="outline" onClick={addSource}>
                   <Plus /> Add
                 </Button>
@@ -128,7 +148,11 @@ export function LeadSettingsPage() {
           <CardContent className="grid gap-3 sm:grid-cols-2">
             {LEAD_STATUSES.map((s, i) => (
               <Field key={s} label={`${i + 1}. ${titleCase(s)}`} htmlFor={`stage-${s}`}>
-                <Input disabled={!editable} value={form.stageLabels[s] ?? ''} onChange={(e) => setForm({ ...form, stageLabels: { ...form.stageLabels, [s]: e.target.value } })} />
+                <Input
+                  disabled={!editable}
+                  value={form.stageLabels[s] ?? ''}
+                  onChange={(e) => setForm({ ...form, stageLabels: { ...form.stageLabels, [s]: e.target.value } })}
+                />
               </Field>
             ))}
           </CardContent>
@@ -144,7 +168,12 @@ export function LeadSettingsPage() {
                 <Badge key={r} variant="secondary" className="gap-1 py-1 pl-2.5">
                   {r}
                   {editable && (
-                    <button type="button" onClick={() => setForm({ ...form, lostReasons: form.lostReasons.filter((x) => x !== r) })} aria-label={`Remove ${r}`} className="cursor-pointer">
+                    <button
+                      type="button"
+                      onClick={() => setForm({ ...form, lostReasons: form.lostReasons.filter((x) => x !== r) })}
+                      aria-label={`Remove ${r}`}
+                      className="cursor-pointer"
+                    >
                       <X className="size-3" />
                     </button>
                   )}
@@ -154,7 +183,12 @@ export function LeadSettingsPage() {
             </div>
             {editable && (
               <div className="mt-3 flex gap-2">
-                <Input value={newReason} onChange={(e) => setNewReason(e.target.value)} placeholder="Add a reason" onKeyDown={(e) => e.key === 'Enter' && addReason()} />
+                <Input
+                  value={newReason}
+                  onChange={(e) => setNewReason(e.target.value)}
+                  placeholder="Add a reason"
+                  onKeyDown={(e) => e.key === 'Enter' && addReason()}
+                />
                 <Button variant="outline" onClick={addReason}>
                   <Plus /> Add
                 </Button>
@@ -210,10 +244,21 @@ function TemplateBody({ value, set }: { value: string; set: (v: string) => void 
   const preview = value.replace(/\{\{\s*([a-z_]+)\s*\}\}/g, (m, k: string) => SAMPLE[k] ?? m);
   return (
     <div className="space-y-2">
-      <Textarea ref={ref} rows={6} value={value} onChange={(e) => set(e.target.value)} placeholder="Namaste {{name}}, thank you for your interest in {{project}}…" />
+      <Textarea
+        ref={ref}
+        rows={6}
+        value={value}
+        onChange={(e) => set(e.target.value)}
+        placeholder="Namaste {{name}}, thank you for your interest in {{project}}…"
+      />
       <div className="flex flex-wrap gap-1">
         {WHATSAPP_VARIABLES.map((v) => (
-          <button key={v} type="button" onClick={() => insert(v)} className="cursor-pointer rounded border bg-muted/50 px-1.5 py-0.5 font-mono text-[11px] hover:bg-muted">
+          <button
+            key={v}
+            type="button"
+            onClick={() => insert(v)}
+            className="cursor-pointer rounded border bg-muted/50 px-1.5 py-0.5 font-mono text-[11px] hover:bg-muted"
+          >
             {`{{${v}}}`}
           </button>
         ))}
@@ -232,7 +277,14 @@ export function WhatsappTemplatesPage() {
   const fields: FieldDef[] = [
     { name: 'name', label: 'Template name', type: 'text', required: true, placeholder: 'Site visit reminder' },
     { name: 'category', label: 'Used for', type: 'select', required: true, options: WHATSAPP_TEMPLATE_CATEGORIES },
-    { name: 'body', label: 'Message', type: 'custom', required: true, span: 2, render: (v, set) => <TemplateBody value={String(v ?? '')} set={set} /> },
+    {
+      name: 'body',
+      label: 'Message',
+      type: 'custom',
+      required: true,
+      span: 2,
+      render: (v, set) => <TemplateBody value={String(v ?? '')} set={set} />,
+    },
     { name: 'isActive', label: 'Active', type: 'checkbox' },
   ];
   return (
@@ -252,9 +304,18 @@ export function WhatsappTemplatesPage() {
         { key: 'category', header: 'Used for', sortKey: 'category', cell: (t) => titleCase(t.category) },
         { key: 'body', header: 'Message', cell: (t) => <span className="line-clamp-2 max-w-md text-muted-foreground">{t.body}</span> },
         { key: 'used', header: 'Sent', sortKey: 'timesUsed', align: 'right', cell: (t) => t.timesUsed },
-        { key: 'active', header: 'Status', cell: (t) => (t.isActive ? <Badge variant="success">Active</Badge> : <Badge variant="muted">Inactive</Badge>) },
+        {
+          key: 'active',
+          header: 'Status',
+          cell: (t) => (t.isActive ? <Badge variant="success">Active</Badge> : <Badge variant="muted">Inactive</Badge>),
+        },
       ]}
-      empty={<EmptyState title="No templates yet" description="Create messages once and send them in two clicks from leads, bookings and the dues list." />}
+      empty={
+        <EmptyState
+          title="No templates yet"
+          description="Create messages once and send them in two clicks from leads, bookings and the dues list."
+        />
+      }
     />
   );
 }
@@ -341,7 +402,8 @@ export function IntegrationsPage() {
   const [testing, setTesting] = React.useState<Integration | null>(null);
   const [confirm, setConfirm] = React.useState<{ row: Integration; kind: 'rotate' | 'delete' } | null>(null);
   const act = useMutation({
-    mutationFn: (c: NonNullable<typeof confirm>) => (c.kind === 'rotate' ? api.post(`/integrations/${c.row.id}/rotate`) : api.delete(`/integrations/${c.row.id}`)),
+    mutationFn: (c: NonNullable<typeof confirm>) =>
+      c.kind === 'rotate' ? api.post(`/integrations/${c.row.id}/rotate`) : api.delete(`/integrations/${c.row.id}`),
     onSuccess: (_d, c) => {
       qc.invalidateQueries({ queryKey: ['integrations'] });
       setConfirm(null);
@@ -395,7 +457,8 @@ export function IntegrationsPage() {
                   <CopyButton text={url} />
                 </div>
                 <p className="text-sm text-muted-foreground">
-                  {i.leadsReceived} leads · {i.duplicates} repeat enquiries{i.lastReceivedAt && ` · last ${formatDateTime(i.lastReceivedAt)}`}
+                  {i.leadsReceived} leads · {i.duplicates} repeat enquiries
+                  {i.lastReceivedAt && ` · last ${formatDateTime(i.lastReceivedAt)}`}
                 </p>
                 {i.portal === 'website' && (
                   <details className="rounded-md border p-2 text-sm">
@@ -419,7 +482,12 @@ export function IntegrationsPage() {
                   <Button size="sm" variant="ghost" onClick={() => setConfirm({ row: i, kind: 'rotate' })}>
                     <RefreshCw /> New URL
                   </Button>
-                  <Button size="icon-sm" variant="ghost" onClick={() => setConfirm({ row: i, kind: 'delete' })} aria-label={`Delete ${i.name}`}>
+                  <Button
+                    size="icon-sm"
+                    variant="ghost"
+                    onClick={() => setConfirm({ row: i, kind: 'delete' })}
+                    aria-label={`Delete ${i.name}`}
+                  >
                     <Trash2 />
                   </Button>
                 </div>
@@ -434,14 +502,16 @@ export function IntegrationsPage() {
         </CardHeader>
         <CardContent className="space-y-2 text-sm text-muted-foreground">
           <p>
-            <strong className="text-foreground">99acres / MagicBricks / Housing.com:</strong> ask your account manager to enable lead push (API / webhook) and give them the URL. Fields such as name, mobile,
-            email and message are recognised automatically.
+            <strong className="text-foreground">99acres / MagicBricks / Housing.com:</strong> ask your account manager to enable lead push
+            (API / webhook) and give them the URL. Fields such as name, mobile, email and message are recognised automatically.
           </p>
           <p>
-            <strong className="text-foreground">Facebook & Google lead forms:</strong> connect through Zapier, Pabbly or Make and send the lead to the URL as JSON.
+            <strong className="text-foreground">Facebook & Google lead forms:</strong> connect through Zapier, Pabbly or Make and send the
+            lead to the URL as JSON.
           </p>
           <p>
-            <strong className="text-foreground">Website:</strong> paste the form code, or post JSON <code>{'{ "name", "phone", "email", "message" }'}</code> from your site.
+            <strong className="text-foreground">Website:</strong> paste the form code, or post JSON{' '}
+            <code>{'{ "name", "phone", "email", "message" }'}</code> from your site.
           </p>
         </CardContent>
       </Card>
@@ -452,7 +522,11 @@ export function IntegrationsPage() {
         open={!!confirm}
         onOpenChange={(o) => !o && setConfirm(null)}
         title={confirm?.kind === 'rotate' ? `Generate a new URL for ${confirm.row.name}?` : `Remove ${confirm?.row.name}?`}
-        description={confirm?.kind === 'rotate' ? 'The old URL stops working immediately. Update the portal with the new one.' : 'Leads already received are kept. The URL stops working.'}
+        description={
+          confirm?.kind === 'rotate'
+            ? 'The old URL stops working immediately. Update the portal with the new one.'
+            : 'Leads already received are kept. The URL stops working.'
+        }
         destructive={confirm?.kind === 'delete'}
         confirmLabel={confirm?.kind === 'rotate' ? 'Generate new URL' : 'Remove'}
         loading={act.isPending}
@@ -470,20 +544,44 @@ function IntegrationDialog({ editing, onClose }: { editing: Integration | 'new' 
   const [errors, setErrors] = React.useState<Record<string, string>>({});
   React.useEffect(() => {
     if (!editing) return;
-    setValues({ portal: row?.portal ?? '99acres', name: row?.name ?? '', projectId: row?.projectId?.id ?? '', defaultAssigneeId: row?.defaultAssigneeId?.id ?? '', isActive: row?.isActive ?? true });
+    setValues({
+      portal: row?.portal ?? '99acres',
+      name: row?.name ?? '',
+      projectId: row?.projectId?.id ?? '',
+      defaultAssigneeId: row?.defaultAssigneeId?.id ?? '',
+      isActive: row?.isActive ?? true,
+    });
     setErrors({});
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [editing]);
   const fields: FieldDef[] = [
-    { name: 'portal', label: 'Channel', type: 'select', required: true, options: PORTALS.map((p) => ({ value: p, label: PORTAL_LABEL[p] ?? p })) },
+    {
+      name: 'portal',
+      label: 'Channel',
+      type: 'select',
+      required: true,
+      options: PORTALS.map((p) => ({ value: p, label: PORTAL_LABEL[p] ?? p })),
+    },
     { name: 'name', label: 'Name', type: 'text', required: true, placeholder: '99acres – Green Valley' },
     { name: 'projectId', label: 'Project for these leads', type: 'project', allowAll: 'Not project-specific' },
-    { name: 'defaultAssigneeId', label: 'Assign new leads to', type: 'select', options: (members.data ?? []).map((m) => ({ value: m.id, label: m.name })), emptyLabel: 'Unassigned' },
+    {
+      name: 'defaultAssigneeId',
+      label: 'Assign new leads to',
+      type: 'select',
+      options: (members.data ?? []).map((m) => ({ value: m.id, label: m.name })),
+      emptyLabel: 'Unassigned',
+    },
     { name: 'isActive', label: 'Live (accept leads)', type: 'checkbox' },
   ];
   const save = useMutation({
     mutationFn: () => {
-      const body = { portal: values.portal, name: String(values.name ?? '').trim(), projectId: values.projectId || undefined, defaultAssigneeId: values.defaultAssigneeId || undefined, isActive: values.isActive === true };
+      const body = {
+        portal: values.portal,
+        name: String(values.name ?? '').trim(),
+        projectId: values.projectId || undefined,
+        defaultAssigneeId: values.defaultAssigneeId || undefined,
+        isActive: values.isActive === true,
+      };
       return row ? api.patch(`/integrations/${row.id}`, body) : api.post('/integrations', body);
     },
     onSuccess: () => {
@@ -514,7 +612,11 @@ function IntegrationDialog({ editing, onClose }: { editing: Integration | 'new' 
 }
 
 function LogsDialog({ integration, onClose }: { integration: Integration | null; onClose: () => void }) {
-  const q = useQuery({ queryKey: ['integrations', integration?.id, 'logs'], queryFn: () => api.get<InboundLog[]>(`/integrations/${integration!.id}/logs`), enabled: !!integration });
+  const q = useQuery({
+    queryKey: ['integrations', integration?.id, 'logs'],
+    queryFn: () => api.get<InboundLog[]>(`/integrations/${integration!.id}/logs`),
+    enabled: !!integration,
+  });
   const variant = { created: 'success', duplicate: 'info', rejected: 'destructive' } as const;
   return (
     <Dialog open={!!integration} onOpenChange={(o) => !o && onClose()}>
@@ -558,7 +660,8 @@ function TestDialog({ integration, onClose }: { integration: Integration | null;
   const [phone, setPhone] = React.useState('9000000001');
   const [message, setMessage] = React.useState('Looking for a 1200 sq ft plot');
   const send = useMutation({
-    mutationFn: () => api.post<{ status: number; duplicate?: boolean; error?: string }>(`/integrations/${integration!.id}/test`, { name, phone, message }),
+    mutationFn: () =>
+      api.post<{ status: number; duplicate?: boolean; error?: string }>(`/integrations/${integration!.id}/test`, { name, phone, message }),
     onSuccess: (r) => {
       qc.invalidateQueries({ queryKey: ['integrations'] });
       qc.invalidateQueries({ queryKey: ['leads'] });

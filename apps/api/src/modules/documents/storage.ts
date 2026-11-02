@@ -74,7 +74,13 @@ class LocalDriver implements StorageDriver {
   }
 
   async signedUrl(key: string, opts: SignedUrlOptions) {
-    const token = signFileToken({ k: key, n: opts.fileName, t: opts.mimeType, d: opts.disposition, e: Math.floor(Date.now() / 1000) + opts.ttlSeconds });
+    const token = signFileToken({
+      k: key,
+      n: opts.fileName,
+      t: opts.mimeType,
+      d: opts.disposition,
+      e: Math.floor(Date.now() / 1000) + opts.ttlSeconds,
+    });
     return `/api/v1/files/${token}`;
   }
 
@@ -90,12 +96,21 @@ class S3Driver implements StorageDriver {
     region: env.S3_REGION,
     endpoint: env.S3_ENDPOINT,
     forcePathStyle: env.S3_FORCE_PATH_STYLE,
-    credentials: env.S3_ACCESS_KEY_ID && env.S3_SECRET_ACCESS_KEY ? { accessKeyId: env.S3_ACCESS_KEY_ID, secretAccessKey: env.S3_SECRET_ACCESS_KEY } : undefined,
+    credentials:
+      env.S3_ACCESS_KEY_ID && env.S3_SECRET_ACCESS_KEY
+        ? { accessKeyId: env.S3_ACCESS_KEY_ID, secretAccessKey: env.S3_SECRET_ACCESS_KEY }
+        : undefined,
   });
 
   async put(key: string, body: Buffer, mimeType: string) {
     await this.client.send(
-      new PutObjectCommand({ Bucket: env.S3_BUCKET, Key: key, Body: body, ContentType: mimeType, ServerSideEncryption: env.S3_ENDPOINT ? undefined : 'AES256' }),
+      new PutObjectCommand({
+        Bucket: env.S3_BUCKET,
+        Key: key,
+        Body: body,
+        ContentType: mimeType,
+        ServerSideEncryption: env.S3_ENDPOINT ? undefined : 'AES256',
+      }),
     );
   }
 

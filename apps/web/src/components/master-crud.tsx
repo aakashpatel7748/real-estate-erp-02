@@ -138,7 +138,13 @@ export function FormFields({
             case 'percent':
               control = (
                 <div className="relative">
-                  <Input inputMode="decimal" value={String(value ?? '')} onChange={(e) => set(e.target.value)} className="pr-7" placeholder={f.placeholder} />
+                  <Input
+                    inputMode="decimal"
+                    value={String(value ?? '')}
+                    onChange={(e) => set(e.target.value)}
+                    className="pr-7"
+                    placeholder={f.placeholder}
+                  />
                   <span className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-sm text-muted-foreground">%</span>
                 </div>
               );
@@ -265,7 +271,13 @@ export function MasterCrud<T extends { id: string; name?: string }>(props: Maste
       <div className="mb-4 flex flex-wrap items-center gap-2">
         <SearchInput value={lp.q} onChange={lp.setQ} placeholder="Search…" className="w-full sm:w-72" />
         {props.filters?.map((f) => (
-          <Select key={f.key} className="h-9 w-auto" value={lp.filter(f.key) ?? ''} onChange={(e) => lp.setFilter(f.key, e.target.value || undefined)} aria-label={f.label}>
+          <Select
+            key={f.key}
+            className="h-9 w-auto"
+            value={lp.filter(f.key) ?? ''}
+            onChange={(e) => lp.setFilter(f.key, e.target.value || undefined)}
+            aria-label={f.label}
+          >
             <option value="">{f.label}: all</option>
             {f.options.map((o) => (
               <option key={optValue(o)} value={optValue(o)}>
@@ -306,7 +318,15 @@ export function MasterCrud<T extends { id: string; name?: string }>(props: Maste
   );
 }
 
-function MasterSheet<T extends { id: string; name?: string }>({ props, editing, onClose }: { props: MasterCrudProps<T>; editing: T | 'new' | null; onClose: () => void }) {
+function MasterSheet<T extends { id: string; name?: string }>({
+  props,
+  editing,
+  onClose,
+}: {
+  props: MasterCrudProps<T>;
+  editing: T | 'new' | null;
+  onClose: () => void;
+}) {
   const qc = useQueryClient();
   const { can } = useAuth();
   const row = editing && editing !== 'new' ? editing : undefined;
@@ -323,7 +343,9 @@ function MasterSheet<T extends { id: string; name?: string }>({ props, editing, 
   const readOnly = row ? !can(props.permissions.update) : !can(props.permissions.create);
   const save = useMutation({
     mutationFn: () => {
-      const missing = props.fields.filter((f) => f.required && (!f.when || f.when(values)) && (getPath(values, f.name) === '' || getPath(values, f.name) === undefined));
+      const missing = props.fields.filter(
+        (f) => f.required && (!f.when || f.when(values)) && (getPath(values, f.name) === '' || getPath(values, f.name) === undefined),
+      );
       if (missing.length) {
         setErrors(Object.fromEntries(missing.map((f) => [f.name, `${f.label} is required`])));
         throw new Error('Fill in the required fields');

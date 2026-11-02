@@ -38,7 +38,9 @@ import {
   phone,
   positivePaise,
   requiredText,
-  trimmed, patchSchema } from './common';
+  trimmed,
+  patchSchema,
+} from './common';
 import { bookingChargeSchema } from './sales';
 
 const ifsc = z
@@ -139,17 +141,17 @@ export const consultantSchema = z.object({
 export type ConsultantInput = z.infer<typeof consultantSchema>;
 
 export const chargeMasterBaseSchema = z.object({
-    /** Empty = applies to every project. */
-    projectId: optional(objectId),
-    name: requiredText('Charge name', 80),
-    kind: z.enum(CHARGE_KINDS),
-    basis: z.enum(CHARGE_BASES),
-    /** fixed: paise · per_sqft: paise per sq ft · percent: basis points of the unit value. */
-    value: z.number().int().min(0).max(Number.MAX_SAFE_INTEGER),
-    gstBp: basisPoints.default(0),
-    /** Added automatically to new quotations and bookings. */
-    isMandatory: z.boolean().default(false),
-    isActive: z.boolean().default(true),
+  /** Empty = applies to every project. */
+  projectId: optional(objectId),
+  name: requiredText('Charge name', 80),
+  kind: z.enum(CHARGE_KINDS),
+  basis: z.enum(CHARGE_BASES),
+  /** fixed: paise · per_sqft: paise per sq ft · percent: basis points of the unit value. */
+  value: z.number().int().min(0).max(Number.MAX_SAFE_INTEGER),
+  gstBp: basisPoints.default(0),
+  /** Added automatically to new quotations and bookings. */
+  isMandatory: z.boolean().default(false),
+  isActive: z.boolean().default(true),
 });
 export const chargeMasterSchema = chargeMasterBaseSchema.refine((v) => v.basis !== 'percent' || v.value <= 10_000, {
   path: ['value'],
@@ -316,7 +318,13 @@ const possessionDetails = z.object({
 });
 
 export const salesDocCreateSchema = z.discriminatedUnion('kind', [
-  z.object({ kind: z.literal('agreement'), bookingId: objectId, date: isoDate, details: agreementDetails.default({}), remarks: optional(trimmed(1000)) }),
+  z.object({
+    kind: z.literal('agreement'),
+    bookingId: objectId,
+    date: isoDate,
+    details: agreementDetails.default({}),
+    remarks: optional(trimmed(1000)),
+  }),
   z.object({
     kind: z.literal('registry'),
     bookingId: objectId,
@@ -378,8 +386,14 @@ export const duesQuerySchema = listQuerySchema.extend({
   bucket: z.enum(['all', 'upcoming', '0_30', '31_60', '61_90', '90_plus']).default('all'),
   followUp: z.enum(['due', 'none']).optional(),
 });
-export const cancellationsQuerySchema = listQuerySchema.extend({ projectId: objectId.optional(), refund: z.enum(['pending', 'settled']).optional() });
-export const allotmentQuerySchema = listQuerySchema.extend({ projectId: objectId.optional(), issued: z.enum(['true', 'false']).optional() });
+export const cancellationsQuerySchema = listQuerySchema.extend({
+  projectId: objectId.optional(),
+  refund: z.enum(['pending', 'settled']).optional(),
+});
+export const allotmentQuerySchema = listQuerySchema.extend({
+  projectId: objectId.optional(),
+  issued: z.enum(['true', 'false']).optional(),
+});
 
 // ======================= Account =======================
 
@@ -436,7 +450,10 @@ export const gstVoucherSchema = z
     hsnSac: optional(trimmed(12)),
     description: requiredText('Description', 300),
     taxableValuePaise: positivePaise,
-    rateBp: z.number().int().refine((v) => (GST_RATES_BP as readonly number[]).includes(v), 'Choose a GST rate'),
+    rateBp: z
+      .number()
+      .int()
+      .refine((v) => (GST_RATES_BP as readonly number[]).includes(v), 'Choose a GST rate'),
     /** Income account (output) or expense / asset account (input). */
     accountId: objectId,
     /** Settled now through this cash/bank account... */

@@ -165,7 +165,7 @@ export function BrokersPage() {
   return (
     <>
       <PageHeader
-        title="Brokers"
+        title="Channel Partners (Brokers)"
         description="Channel partners and their commissions"
         actions={
           <Can permission="brokers.create">

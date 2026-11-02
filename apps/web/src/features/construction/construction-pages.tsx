@@ -251,7 +251,7 @@ export function VendorsPage() {
   return (
     <>
       <PageHeader
-        title="Vendors"
+        title="Vendors & Contractors"
         description="Contractors and suppliers, with what you owe each"
         actions={
           <Can permission="vendors.create">
@@ -424,7 +424,10 @@ export function VendorDetailPage() {
                 <ul className="divide-y">
                   {v.workOrders.map((w) => (
                     <li key={w.id}>
-                      <Link to={`/master/vendors-contractors/work-orders/${w.id}`} className="flex items-center justify-between gap-2 py-2.5 hover:bg-muted/40">
+                      <Link
+                        to={`/master/vendors-contractors/work-orders/${w.id}`}
+                        className="flex items-center justify-between gap-2 py-2.5 hover:bg-muted/40"
+                      >
                         <span>
                           <span className="font-medium">{w.number}</span> · {w.title}
                           <span className="block text-xs text-muted-foreground">{w.projectId?.name}</span>

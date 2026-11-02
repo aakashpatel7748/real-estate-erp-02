@@ -19,7 +19,9 @@ import {
   type VendorInput,
   type VendorPaymentInput,
   type WorkOrderInput,
-  type WorkOrderStatus, patchSchema } from '@erp/shared';
+  type WorkOrderStatus,
+  patchSchema,
+} from '@erp/shared';
 import { authorize } from '../../middleware/auth';
 import { idempotent } from '../../middleware/idempotency';
 import { body, params, query, validate } from '../../middleware/validate';
@@ -44,12 +46,18 @@ vendorsRouter.get('/', authorize('vendors.read'), validate({ query: vendorQuery 
 vendorsRouter.post('/', authorize('vendors.create'), validate({ body: vendorSchema }), async (req, res) =>
   created(res, await svc.createVendor(getCtx(req), body<VendorInput>(req))),
 );
-vendorsRouter.get('/:id', authorize('vendors.read'), validate({ params: idParam }), async (req, res) => ok(res, await svc.getVendor(getCtx(req), params<Id>(req).id)));
+vendorsRouter.get('/:id', authorize('vendors.read'), validate({ params: idParam }), async (req, res) =>
+  ok(res, await svc.getVendor(getCtx(req), params<Id>(req).id)),
+);
 vendorsRouter.patch('/:id', authorize('vendors.update'), validate({ params: idParam, body: patchSchema(vendorSchema) }), async (req, res) =>
   ok(res, await svc.updateVendor(getCtx(req), params<Id>(req).id, body<Partial<VendorInput>>(req))),
 );
-vendorsRouter.post('/:id/payments', authorize('vendors.pay'), validate({ params: idParam, body: vendorPaymentSchema }), idempotent, async (req, res) =>
-  created(res, await svc.payVendor(getCtx(req), params<Id>(req).id, body<VendorPaymentInput>(req))),
+vendorsRouter.post(
+  '/:id/payments',
+  authorize('vendors.pay'),
+  validate({ params: idParam, body: vendorPaymentSchema }),
+  idempotent,
+  async (req, res) => created(res, await svc.payVendor(getCtx(req), params<Id>(req).id, body<VendorPaymentInput>(req))),
 );
 
 export const workOrdersRouter = Router();
@@ -57,8 +65,11 @@ workOrdersRouter.get('/', authorize('construction.read'), validate({ query: work
   const { items, meta } = await svc.listWorkOrders(getCtx(req), query(req));
   ok(res, items, meta);
 });
-workOrdersRouter.get('/costs', authorize('construction.read'), validate({ query: z.object({ projectId: objectId.optional() }) }), async (req, res) =>
-  ok(res, await svc.projectCosts(getCtx(req), query<{ projectId?: string }>(req).projectId)),
+workOrdersRouter.get(
+  '/costs',
+  authorize('construction.read'),
+  validate({ query: z.object({ projectId: objectId.optional() }) }),
+  async (req, res) => ok(res, await svc.projectCosts(getCtx(req), query<{ projectId?: string }>(req).projectId)),
 );
 workOrdersRouter.post('/', authorize('construction.create'), validate({ body: workOrderSchema }), async (req, res) =>
   created(res, await svc.createWorkOrder(getCtx(req), body<WorkOrderInput>(req))),
@@ -66,13 +77,21 @@ workOrdersRouter.post('/', authorize('construction.create'), validate({ body: wo
 workOrdersRouter.get('/:id', authorize('construction.read'), validate({ params: idParam }), async (req, res) =>
   ok(res, await svc.getWorkOrder(getCtx(req), params<Id>(req).id)),
 );
-workOrdersRouter.patch('/:id', authorize('construction.update'), validate({ params: idParam, body: workOrderUpdateSchema }), async (req, res) =>
-  ok(res, await svc.updateWorkOrder(getCtx(req), params<Id>(req).id, body(req))),
+workOrdersRouter.patch(
+  '/:id',
+  authorize('construction.update'),
+  validate({ params: idParam, body: workOrderUpdateSchema }),
+  async (req, res) => ok(res, await svc.updateWorkOrder(getCtx(req), params<Id>(req).id, body(req))),
 );
-workOrdersRouter.post('/:id/status', authorize('construction.update'), validate({ params: idParam, body: workOrderStatusSchema }), async (req, res) => {
-  const b = body<{ status: WorkOrderStatus; note?: string }>(req);
-  ok(res, await svc.changeWorkOrderStatus(getCtx(req), params<Id>(req).id, b.status, b.note));
-});
+workOrdersRouter.post(
+  '/:id/status',
+  authorize('construction.update'),
+  validate({ params: idParam, body: workOrderStatusSchema }),
+  async (req, res) => {
+    const b = body<{ status: WorkOrderStatus; note?: string }>(req);
+    ok(res, await svc.changeWorkOrderStatus(getCtx(req), params<Id>(req).id, b.status, b.note));
+  },
+);
 workOrdersRouter.post(
   '/:id/milestones/:milestoneId',
   authorize('construction.update'),
@@ -93,6 +112,9 @@ expensesRouter.get('/', authorize('expenses.read'), validate({ query: expenseLis
 expensesRouter.post('/', authorize('expenses.create'), validate({ body: expenseSchema }), idempotent, async (req, res) =>
   created(res, await svc.createExpense(getCtx(req), body<ExpenseInput>(req))),
 );
-expensesRouter.post('/:id/reverse', authorize('expenses.reverse'), validate({ params: idParam, body: z.object({ reason: requiredText('Reason', 500) }) }), async (req, res) =>
-  ok(res, await svc.reverseExpense(getCtx(req), params<Id>(req).id, body<{ reason: string }>(req).reason)),
+expensesRouter.post(
+  '/:id/reverse',
+  authorize('expenses.reverse'),
+  validate({ params: idParam, body: z.object({ reason: requiredText('Reason', 500) }) }),
+  async (req, res) => ok(res, await svc.reverseExpense(getCtx(req), params<Id>(req).id, body<{ reason: string }>(req).reason)),
 );

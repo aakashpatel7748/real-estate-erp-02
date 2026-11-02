@@ -17,6 +17,8 @@ import { DataTable, type Column } from '@/components/data-table';
 import { DescriptionList, Field, PageHeader, StatCard, StatusBadge } from '@/components/common';
 import { EmptyState, ErrorState, PageSkeleton } from '@/components/states';
 import { SearchInput } from '@/components/search-input';
+import { BookingExtras, type BookingLoan } from './booking-extras';
+import { WhatsAppButton } from '@/components/whatsapp-button';
 import { ChargePicker, type ChargeRow } from '@/components/charge-picker';
 import { MoneyInput, paiseToInput, toPaise } from '@/components/money';
 import { DocumentsPanel } from '@/components/documents-panel';
@@ -76,7 +78,7 @@ export function BookingsPage() {
   return (
     <>
       <PageHeader
-        title="Bookings"
+        title="Unit Bookings"
         description="Reservations, bookings and allotments"
         actions={
           <>
@@ -640,6 +642,7 @@ export function NewBookingPage() {
 }
 
 interface BookingDetail {
+  loan?: BookingLoan;
   id: string;
   bookingNumber: string;
   status: 'reserved' | 'booked' | 'cancelled' | 'expired';
@@ -780,6 +783,7 @@ export function BookingDetailPage() {
             >
               <FileText /> {b.status === 'reserved' ? 'Reservation letter' : 'Allotment letter'}
             </Button>
+            <WhatsAppButton entityType="booking" entityId={b.id} categories={['booking', 'payment_reminder', 'demand']} size="default" />
             {active && can('payments.create') && (
               <Button onClick={() => setPaying(true)}>
                 <IndianRupee /> Record payment
@@ -883,7 +887,10 @@ export function BookingDetailPage() {
                 {b.items.map((i) => (
                   <li key={i.id} className="flex justify-between gap-2 py-2">
                     <span>
-                      <Link to={`/master/units-inventory?project=${b.projectId.id}&plot=${i.plotId}`} className="font-medium hover:underline">
+                      <Link
+                        to={`/master/units-inventory?project=${b.projectId.id}&plot=${i.plotId}`}
+                        className="font-medium hover:underline"
+                      >
                         Plot {i.blockCode ? `${i.blockCode}-` : ''}
                         {i.plotNumber}
                       </Link>
@@ -932,6 +939,7 @@ export function BookingDetailPage() {
               />
             </CardContent>
           </Card>
+          <BookingExtras bookingId={b.id} loan={b.loan} active={active} />
         </div>
       </div>
 

@@ -24,8 +24,11 @@ type Id = { id: string };
 export const postSalesRouter = Router();
 
 // Home loan on a booking
-postSalesRouter.put('/bookings/:id/loan', authorize('postSales.update'), validate({ params: idParam, body: bookingLoanSchema.nullable() }), async (req, res) =>
-  ok(res, await svc.setBookingLoan(getCtx(req), params<Id>(req).id, body(req))),
+postSalesRouter.put(
+  '/bookings/:id/loan',
+  authorize('postSales.update'),
+  validate({ params: idParam, body: bookingLoanSchema.nullable() }),
+  async (req, res) => ok(res, await svc.setBookingLoan(getCtx(req), params<Id>(req).id, body(req))),
 );
 
 // Allotment letters
@@ -63,8 +66,11 @@ postSalesRouter.get('/dues', authorize('collections.read'), validate({ query: du
 postSalesRouter.get('/dues/summary', authorize('collections.read'), validate({ query: duesQuerySchema }), async (req, res) =>
   ok(res, (await svc.listDues(getCtx(req), { ...query<{ page: number; bucket: string }>(req), page: 1, pageSize: 1 })).summary),
 );
-postSalesRouter.get('/follow-ups', authorize('collections.read'), validate({ query: z.object({ bookingId: objectId }) }), async (req, res) =>
-  ok(res, await svc.listFollowUps(getCtx(req), query<{ bookingId: string }>(req).bookingId)),
+postSalesRouter.get(
+  '/follow-ups',
+  authorize('collections.read'),
+  validate({ query: z.object({ bookingId: objectId }) }),
+  async (req, res) => ok(res, await svc.listFollowUps(getCtx(req), query<{ bookingId: string }>(req).bookingId)),
 );
 postSalesRouter.post('/follow-ups', authorize('collections.create'), validate({ body: followUpSchema }), async (req, res) =>
   created(res, await svc.createFollowUp(getCtx(req), body(req))),
@@ -87,8 +93,11 @@ postSalesRouter.post('/documents/demand/bulk', authorize('postSales.create'), va
 postSalesRouter.get('/documents/:id', authorize('postSales.read'), validate({ params: idParam }), async (req, res) =>
   ok(res, await svc.getSalesDocument(getCtx(req), params<Id>(req).id)),
 );
-postSalesRouter.patch('/documents/:id', authorize('postSales.update'), validate({ params: idParam, body: salesDocUpdateSchema }), async (req, res) =>
-  ok(res, await svc.updateSalesDocument(getCtx(req), params<Id>(req).id, body(req))),
+postSalesRouter.patch(
+  '/documents/:id',
+  authorize('postSales.update'),
+  validate({ params: idParam, body: salesDocUpdateSchema }),
+  async (req, res) => ok(res, await svc.updateSalesDocument(getCtx(req), params<Id>(req).id, body(req))),
 );
 postSalesRouter.get('/documents/:id/pdf', authorize('postSales.read'), validate({ params: idParam }), async (req, res) => {
   await svc.salesDocumentPdf(getCtx(req), params<Id>(req).id, res);

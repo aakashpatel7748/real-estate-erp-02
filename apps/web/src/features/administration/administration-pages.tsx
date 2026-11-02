@@ -78,11 +78,15 @@ type Editing = { kind: 'phase' | 'block'; projectId: string; row?: Phase | Block
 export function PhasesTowersPage() {
   const { projectId } = useProjectContext();
   const qc = useQueryClient();
-  const q = useQuery({ queryKey: ['structure', projectId], queryFn: () => api.get<StructureProject[]>('/structure', { projectId: projectId ?? undefined }) });
+  const q = useQuery({
+    queryKey: ['structure', projectId],
+    queryFn: () => api.get<StructureProject[]>('/structure', { projectId: projectId ?? undefined }),
+  });
   const [editing, setEditing] = React.useState<Editing | null>(null);
   const [deleting, setDeleting] = React.useState<{ kind: 'phase' | 'block'; projectId: string; row: Phase | Block } | null>(null);
   const remove = useMutation({
-    mutationFn: (d: NonNullable<typeof deleting>) => api.delete(`/projects/${d.projectId}/${d.kind === 'phase' ? 'phases' : 'blocks'}/${d.row.id}`),
+    mutationFn: (d: NonNullable<typeof deleting>) =>
+      api.delete(`/projects/${d.projectId}/${d.kind === 'phase' ? 'phases' : 'blocks'}/${d.row.id}`),
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ['structure'] });
       setDeleting(null);
@@ -101,7 +105,8 @@ export function PhasesTowersPage() {
           <Card key={p.id}>
             <CardHeader className="flex-row items-center justify-between gap-2">
               <CardTitle className="flex items-center gap-2">
-                <Building className="size-4 text-muted-foreground" /> {p.name} <span className="text-sm font-normal text-muted-foreground">{p.code}</span>
+                <Building className="size-4 text-muted-foreground" /> {p.name}{' '}
+                <span className="text-sm font-normal text-muted-foreground">{p.code}</span>
               </CardTitle>
               <Can permission="projects.update">
                 <div className="flex gap-2">
@@ -121,7 +126,12 @@ export function PhasesTowersPage() {
                 rows={p.phases}
                 sub={(r) => {
                   const ph = r as Phase;
-                  return [ph.startDate && `Start ${formatDate(ph.startDate.slice(0, 10))}`, ph.targetDate && `Target ${formatDate(ph.targetDate.slice(0, 10))}`].filter(Boolean).join(' · ');
+                  return [
+                    ph.startDate && `Start ${formatDate(ph.startDate.slice(0, 10))}`,
+                    ph.targetDate && `Target ${formatDate(ph.targetDate.slice(0, 10))}`,
+                  ]
+                    .filter(Boolean)
+                    .join(' · ');
                 }}
                 onEdit={(r) => setEditing({ kind: 'phase', projectId: p.id, row: r, phases: p.phases })}
                 onDelete={(r) => setDeleting({ kind: 'phase', projectId: p.id, row: r })}
@@ -192,7 +202,13 @@ function StructureList({
                   <Button variant="ghost" size="icon-sm" onClick={() => onEdit(r)} aria-label={`Edit ${r.name}`}>
                     <Pencil />
                   </Button>
-                  <Button variant="ghost" size="icon-sm" onClick={() => onDelete(r)} aria-label={`Delete ${r.name}`} disabled={r.units.total > 0}>
+                  <Button
+                    variant="ghost"
+                    size="icon-sm"
+                    onClick={() => onDelete(r)}
+                    aria-label={`Delete ${r.name}`}
+                    disabled={r.units.total > 0}
+                  >
                     <Trash2 />
                   </Button>
                 </div>
@@ -234,7 +250,13 @@ function StructureDialog({ editing, onClose }: { editing: Editing | null; onClos
     : [
         { name: 'name', label: 'Tower / block name', type: 'text', required: true, placeholder: 'Tower A' },
         { name: 'code', label: 'Code', type: 'upper', required: true, placeholder: 'TA' },
-        { name: 'phaseId', label: 'Phase', type: 'select', options: (editing?.phases ?? []).map((p) => ({ value: p.id, label: p.name })), emptyLabel: 'No phase' },
+        {
+          name: 'phaseId',
+          label: 'Phase',
+          type: 'select',
+          options: (editing?.phases ?? []).map((p) => ({ value: p.id, label: p.name })),
+          emptyLabel: 'No phase',
+        },
       ];
   const save = useMutation({
     mutationFn: () => {
@@ -293,7 +315,14 @@ interface CashBank {
   inflowPaise: number;
   outflowPaise: number;
   lastTransactionOn?: string;
-  bankDetails?: { bankName?: string; accountNumber?: string; ifsc?: string; branch?: string; accountType?: string; isReraAccount?: boolean };
+  bankDetails?: {
+    bankName?: string;
+    accountNumber?: string;
+    ifsc?: string;
+    branch?: string;
+    accountType?: string;
+    isReraAccount?: boolean;
+  };
 }
 
 const mask = (n?: string) => (n ? `•••• ${n.slice(-4)}` : '');
@@ -320,7 +349,11 @@ export function BankCashAccountsPage() {
       <div className="mb-6 grid gap-4 sm:grid-cols-3">
         <StatCard label="Bank balance" value={formatINR(total('bank'))} icon={Landmark} />
         <StatCard label="Cash in hand" value={formatINR(total('cash'))} icon={Wallet} />
-        <StatCard label="Accounts" value={q.data.filter((a) => a.isActive).length} hint={`${q.data.filter((a) => a.bankDetails?.isReraAccount).length} RERA designated`} />
+        <StatCard
+          label="Accounts"
+          value={q.data.filter((a) => a.isActive).length}
+          hint={`${q.data.filter((a) => a.bankDetails?.isReraAccount).length} RERA designated`}
+        />
       </div>
       <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
         {q.data.map((a) => (
@@ -328,7 +361,11 @@ export function BankCashAccountsPage() {
             <CardHeader className="flex-row items-start justify-between gap-2 pb-2">
               <div className="min-w-0">
                 <CardTitle className="flex items-center gap-2 truncate text-base">
-                  {a.kind === 'bank' ? <Landmark className="size-4 text-muted-foreground" /> : <Wallet className="size-4 text-muted-foreground" />}
+                  {a.kind === 'bank' ? (
+                    <Landmark className="size-4 text-muted-foreground" />
+                  ) : (
+                    <Wallet className="size-4 text-muted-foreground" />
+                  )}
                   {a.name}
                 </CardTitle>
                 <p className="mt-1 text-xs text-muted-foreground">
@@ -344,7 +381,9 @@ export function BankCashAccountsPage() {
               </div>
             </CardHeader>
             <CardContent>
-              <p className={`text-2xl font-semibold tabular ${a.balancePaise < 0 ? 'text-destructive' : ''}`}>{formatINR(a.balancePaise)}</p>
+              <p className={`text-2xl font-semibold tabular ${a.balancePaise < 0 ? 'text-destructive' : ''}`}>
+                {formatINR(a.balancePaise)}
+              </p>
               <p className="mt-1 text-xs text-muted-foreground">
                 In {formatINR(a.inflowPaise)} · Out {formatINR(a.outflowPaise)}
                 {a.lastTransactionOn && ` · Last ${formatDate(a.lastTransactionOn.slice(0, 10))}`}
@@ -395,8 +434,28 @@ function CashBankDialog({ editing, onClose }: { editing: CashBank | 'new' | null
   }, [editing]);
   const bank = values.kind === 'bank';
   const fields: FieldDef[] = [
-    ...(row ? [] : [{ name: 'kind', label: 'Type', type: 'select', required: true, options: [{ value: 'bank', label: 'Bank account' }, { value: 'cash', label: 'Cash / petty cash' }] } as FieldDef]),
-    { name: 'name', label: 'Account name', type: 'text', required: true, span: 2, placeholder: bank ? 'HDFC – RERA collection' : 'Site office cash' },
+    ...(row
+      ? []
+      : [
+          {
+            name: 'kind',
+            label: 'Type',
+            type: 'select',
+            required: true,
+            options: [
+              { value: 'bank', label: 'Bank account' },
+              { value: 'cash', label: 'Cash / petty cash' },
+            ],
+          } as FieldDef,
+        ]),
+    {
+      name: 'name',
+      label: 'Account name',
+      type: 'text',
+      required: true,
+      span: 2,
+      placeholder: bank ? 'HDFC – RERA collection' : 'Site office cash',
+    },
     ...(bank
       ? ([
           { name: 'bankName', label: 'Bank', type: 'text' },
@@ -418,7 +477,14 @@ function CashBankDialog({ editing, onClose }: { editing: CashBank | 'new' | null
     mutationFn: () => {
       const s = (k: string) => (values[k] ? String(values[k]).trim() : undefined);
       const details = bank
-        ? { bankName: s('bankName'), accountNumber: s('accountNumber'), ifsc: s('ifsc')?.toUpperCase(), branch: s('branch'), accountType: s('accountType'), isReraAccount: values.isReraAccount === true }
+        ? {
+            bankName: s('bankName'),
+            accountNumber: s('accountNumber'),
+            ifsc: s('ifsc')?.toUpperCase(),
+            branch: s('branch'),
+            accountType: s('accountType'),
+            isReraAccount: values.isReraAccount === true,
+          }
         : {};
       if (row) return api.patch(`/cash-bank-accounts/${row.id}`, { name: s('name'), ...details, isActive: values.isActive === true });
       return api.post('/cash-bank-accounts', {
@@ -480,7 +546,8 @@ function ApplyRateButton({ row }: { row: RateIndex }) {
   const qc = useQueryClient();
   const [preview, setPreview] = React.useState<{ units: number; valueBeforePaise: number; valueAfterPaise: number } | null>(null);
   const dry = useMutation({
-    mutationFn: () => api.post<{ units: number; valueBeforePaise: number; valueAfterPaise: number }>(`/rate-indexes/${row.id}/apply`, { dryRun: true }),
+    mutationFn: () =>
+      api.post<{ units: number; valueBeforePaise: number; valueAfterPaise: number }>(`/rate-indexes/${row.id}/apply`, { dryRun: true }),
     onSuccess: setPreview,
     onError: (e) => toast.error(errorMessage(e)),
   });
@@ -544,9 +611,18 @@ export function RateIndexesPage() {
         {
           key: 'scope',
           header: 'Applies to',
-          cell: (r) => [r.unitType && titleCase(r.unitType), r.category && titleCase(r.category), r.blockId?.name, r.phaseId?.name].filter(Boolean).join(' · ') || 'All units',
+          cell: (r) =>
+            [r.unitType && titleCase(r.unitType), r.category && titleCase(r.category), r.blockId?.name, r.phaseId?.name]
+              .filter(Boolean)
+              .join(' · ') || 'All units',
         },
-        { key: 'rate', header: 'Rate / sq ft', sortKey: 'ratePaisePerSqft', align: 'right', cell: (r) => <span className="tabular">{formatINR(r.ratePaisePerSqft)}</span> },
+        {
+          key: 'rate',
+          header: 'Rate / sq ft',
+          sortKey: 'ratePaisePerSqft',
+          align: 'right',
+          cell: (r) => <span className="tabular">{formatINR(r.ratePaisePerSqft)}</span>,
+        },
         { key: 'from', header: 'Effective', sortKey: 'effectiveFrom', cell: (r) => formatDate(r.effectiveFrom.slice(0, 10)) },
         {
           key: 'applied',
@@ -564,8 +640,9 @@ export function RateIndexesPage() {
         </Can>
       )}
       transform={(p) => ({ ...p, ratePaisePerSqft: p.ratePaisePerSqft ?? 0 })}
-      empty={<EmptyState title="No rate indexes yet" description="Create a rate card and apply it to reprice available units in one step." />}
+      empty={
+        <EmptyState title="No rate indexes yet" description="Create a rate card and apply it to reprice available units in one step." />
+      }
     />
   );
 }
-

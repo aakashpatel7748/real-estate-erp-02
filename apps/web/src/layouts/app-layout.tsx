@@ -206,7 +206,12 @@ function GlobalSearch() {
         },
         {
           label: 'Customers',
-          items: data.customers.map((c) => ({ key: c.id, title: c.name, sub: `${c.customerCode} · ${c.phone}`, to: `/post-sales/customers/${c.id}` })),
+          items: data.customers.map((c) => ({
+            key: c.id,
+            title: c.name,
+            sub: `${c.customerCode} · ${c.phone}`,
+            to: `/post-sales/customers/${c.id}`,
+          })),
         },
         {
           label: 'Plots',
@@ -217,14 +222,27 @@ function GlobalSearch() {
             to: `/master/units-inventory?project=${p.projectId}&plot=${p.id}`,
           })),
         },
-        { label: 'Projects', items: data.projects.map((p) => ({ key: p.id, title: p.name, sub: p.code, to: `/administration/projects/${p.id}` })) },
+        {
+          label: 'Projects',
+          items: data.projects.map((p) => ({ key: p.id, title: p.name, sub: p.code, to: `/administration/projects/${p.id}` })),
+        },
         {
           label: 'Leads',
-          items: (data.leads ?? []).map((l) => ({ key: l.id, title: l.name, sub: `${l.phone} · ${l.status}`, to: `/pre-sales/leads?lead=${l.id}` })),
+          items: (data.leads ?? []).map((l) => ({
+            key: l.id,
+            title: l.name,
+            sub: `${l.phone} · ${l.status}`,
+            to: `/pre-sales/leads?lead=${l.id}`,
+          })),
         },
         {
           label: 'Vendors',
-          items: (data.vendors ?? []).map((v) => ({ key: v.id, title: v.name, sub: v.category, to: `/master/vendors-contractors/${v.id}` })),
+          items: (data.vendors ?? []).map((v) => ({
+            key: v.id,
+            title: v.name,
+            sub: v.category,
+            to: `/master/vendors-contractors/${v.id}`,
+          })),
         },
         {
           label: 'Land',

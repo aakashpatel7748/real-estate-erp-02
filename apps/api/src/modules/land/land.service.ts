@@ -1,5 +1,13 @@
 import { Types } from 'mongoose';
-import { formatINR, LAND_TRANSITIONS, parseISODate, todayInIndia, type LandParcelInput, type LandPaymentInput, type LandStatus } from '@erp/shared';
+import {
+  formatINR,
+  LAND_TRANSITIONS,
+  parseISODate,
+  todayInIndia,
+  type LandParcelInput,
+  type LandPaymentInput,
+  type LandStatus,
+} from '@erp/shared';
 import { withTransaction } from '../../db/transaction';
 import { audit } from '../../utils/audit';
 import { badRequest, businessRule, notFound } from '../../utils/errors';
@@ -38,7 +46,10 @@ function dates(input: Partial<LandParcelInput>) {
   return out;
 }
 
-export async function listParcels(ctx: TenantContext, q: { page: number; pageSize: number; sort?: string; q?: string; status?: string; projectId?: string }) {
+export async function listParcels(
+  ctx: TenantContext,
+  q: { page: number; pageSize: number; sort?: string; q?: string; status?: string; projectId?: string },
+) {
   const filter = visibility(ctx);
   if (q.projectId) {
     assertProjectAccess(ctx, q.projectId);
@@ -94,7 +105,12 @@ export async function createParcel(ctx: TenantContext, input: LandParcelInput) {
     statusHistory: [{ from: null, to: 'negotiation', note: 'Parcel recorded', by: ctx.userId }],
     createdBy: ctx.userId,
   });
-  await audit(ctx, { action: 'land.create', entityType: 'land_parcel', entityId: parcel._id, summary: `Khasra ${parcel.khasraNumber}, ${parcel.village}` });
+  await audit(ctx, {
+    action: 'land.create',
+    entityType: 'land_parcel',
+    entityId: parcel._id,
+    summary: `Khasra ${parcel.khasraNumber}, ${parcel.village}`,
+  });
   return parcel.toJSON();
 }
 
@@ -133,7 +149,9 @@ export async function changeStatus(ctx: TenantContext, id: string, to: LandStatu
 /** Payment to land owners, capitalised to Land & Development (WIP). Atomic and capped at the agreed cost. */
 export async function recordLandPayment(ctx: TenantContext, id: string, input: LandPaymentInput) {
   return withTransaction(async (session) => {
-    const parcel = await LandParcel.findOne({ ...visibility(ctx), _id: toObjectId(id) }).session(session).lean();
+    const parcel = await LandParcel.findOne({ ...visibility(ctx), _id: toObjectId(id) })
+      .session(session)
+      .lean();
     if (!parcel) throw notFound('Land parcel');
     if (parcel.status === 'dropped' || parcel.status === 'negotiation') {
       throw businessRule('Record the agreement before paying land owners');
@@ -162,7 +180,11 @@ export async function recordLandPayment(ctx: TenantContext, id: string, input: L
     );
     // Conditional increment: concurrent payments cannot overshoot the agreed cost.
     const cap = parcel.agreedCostPaise ? { paidPaise: { $lte: parcel.agreedCostPaise - input.amountPaise } } : {};
-    const upd = await LandParcel.updateOne({ companyId: ctx.companyId, _id: parcel._id, ...cap }, { $inc: { paidPaise: input.amountPaise } }, { session });
+    const upd = await LandParcel.updateOne(
+      { companyId: ctx.companyId, _id: parcel._id, ...cap },
+      { $inc: { paidPaise: input.amountPaise } },
+      { session },
+    );
     if (upd.modifiedCount !== 1) throw businessRule('Payment exceeds the remaining agreed cost');
     const [payment] = await LandPayment.create(
       [
@@ -185,7 +207,11 @@ export async function recordLandPayment(ctx: TenantContext, id: string, input: L
       ],
       { session },
     );
-    await audit(ctx, { action: 'land.payment', entityType: 'land_parcel', entityId: parcel._id, summary: `${number} ${formatINR(input.amountPaise)}` }, session);
+    await audit(
+      ctx,
+      { action: 'land.payment', entityType: 'land_parcel', entityId: parcel._id, summary: `${number} ${formatINR(input.amountPaise)}` },
+      session,
+    );
     return payment!.toJSON();
   });
 }

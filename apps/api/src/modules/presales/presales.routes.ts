@@ -56,10 +56,16 @@ export const whatsappTemplatesRouter = crudRouter({
 });
 
 // ---------- Portal integrations ----------
-async function prepareIntegration(ctx: Parameters<NonNullable<Parameters<typeof crudRouter>[0]['prepare']>>[0], input: Record<string, unknown>) {
+async function prepareIntegration(
+  ctx: Parameters<NonNullable<Parameters<typeof crudRouter>[0]['prepare']>>[0],
+  input: Record<string, unknown>,
+) {
   const i = input as Partial<PortalIntegrationInput>;
   if (i.projectId) await assertRefs(ctx, Project, [i.projectId], 'Project', { project: true });
-  if (i.defaultAssigneeId && !(await Membership.exists({ companyId: ctx.companyId, userId: toObjectId(i.defaultAssigneeId), status: 'active' }))) {
+  if (
+    i.defaultAssigneeId &&
+    !(await Membership.exists({ companyId: ctx.companyId, userId: toObjectId(i.defaultAssigneeId), status: 'active' }))
+  ) {
     throw badRequest('Assignee is not an active member of this company');
   }
   return input;
@@ -74,19 +80,33 @@ export const integrationsRouter = crudRouter({
   searchFields: ['name', 'portal'],
   sortFields: ['name', 'portal', 'leadsReceived', 'lastReceivedAt', 'createdAt'],
   defaultSort: { createdAt: -1 },
-  populate: [{ path: 'projectId', select: 'name code' }, { path: 'defaultAssigneeId', select: 'name' }],
+  populate: [
+    { path: 'projectId', select: 'name code' },
+    { path: 'defaultAssigneeId', select: 'name' },
+  ],
   prepare: prepareIntegration,
   extend: (r) => {
-    r.get('/:id/logs', authorize('crm.configure'), validate({ params: idParam }), async (req, res) => ok(res, await svc.integrationLogs(getCtx(req), params<Id>(req).id)));
-    r.post('/:id/rotate', authorize('crm.configure'), validate({ params: idParam }), async (req, res) => ok(res, await svc.rotateToken(getCtx(req), params<Id>(req).id)));
+    r.get('/:id/logs', authorize('crm.configure'), validate({ params: idParam }), async (req, res) =>
+      ok(res, await svc.integrationLogs(getCtx(req), params<Id>(req).id)),
+    );
+    r.post('/:id/rotate', authorize('crm.configure'), validate({ params: idParam }), async (req, res) =>
+      ok(res, await svc.rotateToken(getCtx(req), params<Id>(req).id)),
+    );
     /** Sends a sample enquiry through the same pipeline as the public webhook. */
     r.post(
       '/:id/test',
       authorize('crm.configure'),
-      validate({ params: idParam, body: z.object({ name: z.string().max(120), phone: z.string().max(20), message: z.string().max(500).optional() }) }),
+      validate({
+        params: idParam,
+        body: z.object({ name: z.string().max(120), phone: z.string().max(20), message: z.string().max(500).optional() }),
+      }),
       async (req, res) => {
         const ctx = getCtx(req);
-        const integration = await PortalIntegration.findOne({ companyId: ctx.companyId, deletedAt: null, _id: toObjectId(params<Id>(req).id) }).lean();
+        const integration = await PortalIntegration.findOne({
+          companyId: ctx.companyId,
+          deletedAt: null,
+          _id: toObjectId(params<Id>(req).id),
+        }).lean();
         if (!integration) throw badRequest('Integration not found');
         const result = await svc.receiveInboundLead(integration.token, body(req), req.ip);
         ok(res, result);
@@ -134,12 +154,17 @@ quotationsRouter.get('/', authorize('quotations.read'), validate({ query: quotat
 quotationsRouter.post('/', authorize('quotations.create'), validate({ body: quotationSchema }), async (req, res) =>
   created(res, await svc.createQuotation(getCtx(req), body(req))),
 );
-quotationsRouter.get('/:id', authorize('quotations.read'), validate({ params: idParam }), async (req, res) => ok(res, await svc.getQuotation(getCtx(req), params<Id>(req).id)));
+quotationsRouter.get('/:id', authorize('quotations.read'), validate({ params: idParam }), async (req, res) =>
+  ok(res, await svc.getQuotation(getCtx(req), params<Id>(req).id)),
+);
 quotationsRouter.get('/:id/pdf', authorize('quotations.read'), validate({ params: idParam }), async (req, res) => {
   await svc.quotationPdf(getCtx(req), params<Id>(req).id, res);
 });
-quotationsRouter.post('/:id/status', authorize('quotations.update'), validate({ params: idParam, body: quotationStatusSchema }), async (req, res) =>
-  ok(res, await svc.setQuotationStatus(getCtx(req), params<Id>(req).id, body<{ status: string }>(req).status)),
+quotationsRouter.post(
+  '/:id/status',
+  authorize('quotations.update'),
+  validate({ params: idParam, body: quotationStatusSchema }),
+  async (req, res) => ok(res, await svc.setQuotationStatus(getCtx(req), params<Id>(req).id, body<{ status: string }>(req).status)),
 );
 
 // ---------- Sales dashboard ----------

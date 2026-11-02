@@ -1,5 +1,11 @@
 import type { Types } from 'mongoose';
-import { DEFAULT_LEAD_SOURCE_LABELS, DEFAULT_LEAD_STAGE_LABELS, DEFAULT_LOST_REASONS, LEAD_SOURCES, type LeadSettingsInput } from '@erp/shared';
+import {
+  DEFAULT_LEAD_SOURCE_LABELS,
+  DEFAULT_LEAD_STAGE_LABELS,
+  DEFAULT_LOST_REASONS,
+  LEAD_SOURCES,
+  type LeadSettingsInput,
+} from '@erp/shared';
 import { badRequest } from '../../utils/errors';
 import { Company } from '../companies/company.model';
 
@@ -31,7 +37,9 @@ export async function getLeadSettings(companyId: Types.ObjectId): Promise<LeadSe
 
 export async function saveLeadSettings(companyId: Types.ObjectId, input: LeadSettingsInput) {
   // 'other' must always exist: inbound integrations and imports fall back to it.
-  const sources = input.sources.some((s) => s.key === 'other') ? input.sources : [...input.sources, { key: 'other', label: 'Other', active: true }];
+  const sources = input.sources.some((s) => s.key === 'other')
+    ? input.sources
+    : [...input.sources, { key: 'other', label: 'Other', active: true }];
   await Company.updateOne({ _id: companyId }, { $set: { leadSettings: { ...input, sources } } });
   return getLeadSettings(companyId);
 }
@@ -41,5 +49,6 @@ export async function assertLeadSource(companyId: Types.ObjectId, source: string
   if (!source) return;
   const { sources } = await getLeadSettings(companyId);
   const found = sources.find((s) => s.key === source);
-  if (!found || (isNew && !found.active)) throw badRequest('Choose one of the configured lead sources', [{ path: 'source', message: 'Unknown lead source' }]);
+  if (!found || (isNew && !found.active))
+    throw badRequest('Choose one of the configured lead sources', [{ path: 'source', message: 'Unknown lead source' }]);
 }

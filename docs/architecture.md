@@ -123,6 +123,12 @@ Each company starts with a system chart of accounts. Services look accounts up b
 | Expense (paid now) | Dr expense / WIP account · Cr Cash/Bank |
 | Vendor payment | Dr Vendor Payables · Cr Cash/Bank |
 | Bill / expense reversal | Mirror entry linked through `reversalOf` |
+| PDC cleared | Same as a receipt (recorded on the clearing date) |
+| Credit note (ledger adjustment) | Dr Discounts & Waivers (or chosen account) · Cr Customer Receivables; latest unpaid installments reduced |
+| Debit note (ledger adjustment) | Dr Customer Receivables · Cr Interest & Late Fees (or chosen income); new installment added |
+| GST sale | Dr Cash/Bank · Cr income (taxable) · Cr Output CGST + SGST or IGST |
+| GST purchase | Dr expense/asset (taxable) · Dr Input CGST + SGST or IGST · Cr Cash/Bank or Vendor Payables |
+| Bank/cash opening balance | Dr the new account · Cr Owner's Capital |
 | Manual voucher | Any balanced lines, **except control accounts** (customer receivables, customer advances, refunds payable, vendor payables, broker payables) |
 
 - `postJournal` validates the balance (debit = credit > 0, one side per line), confirms the accounts belong to the company and are active, and numbers the voucher per financial year.
@@ -135,6 +141,20 @@ Each company starts with a system chart of accounts. Services look accounts up b
 ## Idempotency
 
 Sensitive POSTs (bookings, payments, refunds, land payments, expenses, vendor payments, broker payouts) require an `Idempotency-Key`. The first request claims the key through a unique index and stores its final response. A retry with the same body replays that response (`idempotent-replayed: true`). A different body gets `422`. A retry while the first request is still running gets `409`. Failed requests release the key. The web client creates one key per dialog or form session, so double-clicks and network retries are safe.
+
+## Phase 3 collections
+
+| Collection | Purpose |
+| --- | --- |
+| parties, financers, consultants, chargemasters | Master records (soft delete); company-wide except charges, which may be project-specific |
+| rateindexes | Rate cards; `applications[]` records each repricing |
+| parkingslots | Slots per project with allotment history; released automatically when a booking is cancelled |
+| whatsapptemplates, portalintegrations, inboundlogs (TTL 90 days), quotations | Pre-sales; integration tokens are unique and looked up cross-tenant only by the public webhook |
+| salesdocuments | Agreements, registries, possession and demand letters (`kind` + Zod-validated `details`, status history) |
+| collectionfollowups | Dues follow-ups with promises and next dates |
+| pdcs, ledgeradjustments, gstvouchers | Account workflows; adjustments store per-installment `effects` so reversals are exact |
+
+Bookings gained `loan`, `allotment`, `quotationId` and `adjustmentsPaise`; plots gained `unitType`, `floor` and `configuration`; companies gained `leadSettings` and post-sales settings. Cancelling a booking now also reverses its ledger adjustments and releases its parking.
 
 ## Documents
 

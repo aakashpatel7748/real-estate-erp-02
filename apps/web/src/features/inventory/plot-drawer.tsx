@@ -6,7 +6,15 @@ import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import { BookOpenCheck, Lock, LockOpen, Pencil, Stamp, Trash2 } from 'lucide-react';
 import { toast } from 'sonner';
-import { applyBasisPoints, MANUAL_PLOT_TRANSITIONS, PLOT_CATEGORIES, PLOT_FACINGS, priceForArea, type PlotStatus } from '@erp/shared';
+import {
+  applyBasisPoints,
+  MANUAL_PLOT_TRANSITIONS,
+  PLOT_CATEGORIES,
+  PLOT_FACINGS,
+  priceForArea,
+  UNIT_TYPES,
+  type PlotStatus,
+} from '@erp/shared';
 import { api, errorMessage, fieldErrors } from '@/lib/api';
 import { areaToSqft, formatDateTime, formatINR, titleCase } from '@/lib/format';
 import { Can, useAuth } from '@/features/auth/auth-context';
@@ -24,6 +32,9 @@ export interface Plot {
   phaseId?: string | null;
   blockCode?: string;
   category: string;
+  unitType?: string;
+  floor?: number | null;
+  configuration?: string;
   facing?: string;
   areaX100: number;
   widthFtX100?: number;
@@ -56,6 +67,12 @@ const plotForm = z.object({
   blockId: z.string().optional(),
   phaseId: z.string().optional(),
   category: z.enum(PLOT_CATEGORIES),
+  unitType: z.enum(UNIT_TYPES),
+  floor: z
+    .string()
+    .regex(/^(-?\d{1,3})?$/, 'Floor number')
+    .optional(),
+  configuration: z.string().max(40).optional(),
   facing: z.string().optional(),
   area: areaField('Area'),
   rate: rupeeField('Rate'),
@@ -88,6 +105,9 @@ export function PlotFormSheet({
       blockId: plot?.blockId ?? '',
       phaseId: plot?.phaseId ?? '',
       category: (plot?.category as PlotForm['category']) ?? 'residential',
+      unitType: (plot?.unitType as PlotForm['unitType']) ?? 'plot',
+      floor: plot?.floor !== undefined && plot?.floor !== null ? String(plot.floor) : '',
+      configuration: plot?.configuration ?? '',
       facing: plot?.facing ?? '',
       area: plot ? areaToSqft(plot.areaX100) : '',
       rate: paiseToInput(plot?.ratePaisePerSqft),
@@ -104,6 +124,9 @@ export function PlotFormSheet({
         blockId: v.blockId || undefined,
         phaseId: v.phaseId || undefined,
         category: v.category,
+        unitType: v.unitType,
+        floor: v.floor ? Number(v.floor) : undefined,
+        configuration: v.configuration || undefined,
         facing: v.facing || undefined,
         areaX100: toAreaX100(v.area),
         ratePaisePerSqft: toPaise(v.rate),
@@ -112,8 +135,16 @@ export function PlotFormSheet({
         remarks: v.remarks || undefined,
       };
       if (locked) {
-        const { facing, remarks, isCorner, category } = payload;
-        return api.patch(`/projects/${projectId}/plots/${plot!.id}`, { facing, remarks, isCorner, category });
+        const { facing, remarks, isCorner, category, unitType, floor, configuration } = payload;
+        return api.patch(`/projects/${projectId}/plots/${plot!.id}`, {
+          facing,
+          remarks,
+          isCorner,
+          category,
+          unitType,
+          floor,
+          configuration,
+        });
       }
       return plot ? api.patch(`/projects/${projectId}/plots/${plot.id}`, payload) : api.post(`/projects/${projectId}/plots`, payload);
     },
@@ -121,7 +152,7 @@ export function PlotFormSheet({
       qc.invalidateQueries({ queryKey: ['plots', projectId] });
       qc.invalidateQueries({ queryKey: ['plot'] });
       qc.invalidateQueries({ queryKey: ['map', projectId] });
-      toast.success(plot ? 'Plot updated' : 'Plot added');
+      toast.success(plot ? 'Unit updated' : 'Unit added');
       onOpenChange(false);
     },
     onError: (err) => {
@@ -147,7 +178,7 @@ export function PlotFormSheet({
   return (
     <Sheet open={open} onOpenChange={onOpenChange}>
       <SheetContent
-        title={plot ? `Edit plot ${plot.plotNumber}` : 'Add plot'}
+        title={plot ? `Edit unit ${plot.plotNumber}` : 'Add unit'}
         description={locked ? 'Commercial fields are locked while the plot is reserved, booked or sold.' : undefined}
         footer={
           <>
@@ -183,6 +214,21 @@ export function PlotFormSheet({
                 </option>
               ))}
             </Select>
+          </Field>
+          <Field label="Unit type" htmlFor="pl-type">
+            <Select {...form.register('unitType')}>
+              {UNIT_TYPES.map((t) => (
+                <option key={t} value={t}>
+                  {titleCase(t)}
+                </option>
+              ))}
+            </Select>
+          </Field>
+          <Field label="Floor" htmlFor="pl-floor" error={form.formState.errors.floor?.message} hint="For flats, shops and offices">
+            <Input inputMode="numeric" {...form.register('floor')} />
+          </Field>
+          <Field label="Configuration" htmlFor="pl-config">
+            <Input placeholder="2 BHK" {...form.register('configuration')} />
           </Field>
           <Field label="Category" htmlFor="pl-cat">
             <Select {...form.register('category')}>
@@ -293,7 +339,9 @@ export function PlotDrawer({
         <SheetContent
           title={p ? `Plot ${p.blockCode ? `${p.blockCode}-` : ''}${p.plotNumber}` : 'Plot'}
           description={
-            p ? `${titleCase(p.category)}${p.facing ? ` · ${titleCase(p.facing)} facing` : ''}${p.isCorner ? ' · Corner' : ''}` : undefined
+            p
+              ? `${titleCase(p.unitType ?? 'plot')}${p.configuration ? ` ${p.configuration}` : ''} · ${titleCase(p.category)}${p.facing ? ` · ${titleCase(p.facing)} facing` : ''}${p.isCorner ? ' · Corner' : ''}`
+              : undefined
           }
           footer={
             p && (

@@ -286,7 +286,7 @@ export function CustomersPage() {
   return (
     <>
       <PageHeader
-        title="Customers"
+        title="Customers / Buyers"
         description="Buyers and co-applicants"
         actions={
           <Can permission="customers.create">
@@ -483,7 +483,10 @@ export function CustomerDetailPage() {
               <ul className="divide-y">
                 {c.bookings.map((b) => (
                   <li key={b.id}>
-                    <Link to={`/post-sales/bookings/${b.id}`} className="flex items-center justify-between gap-3 px-5 py-3 hover:bg-muted/50">
+                    <Link
+                      to={`/post-sales/bookings/${b.id}`}
+                      className="flex items-center justify-between gap-3 px-5 py-3 hover:bg-muted/50"
+                    >
                       <div>
                         <p className="font-medium">{b.bookingNumber}</p>
                         <p className="text-xs text-muted-foreground">

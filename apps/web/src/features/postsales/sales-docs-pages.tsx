@@ -10,7 +10,18 @@ import { useListParams } from '@/hooks/use-list-params';
 import { useProjectContext } from '@/hooks/use-project';
 import { Can, useAuth } from '@/features/auth/auth-context';
 import { Button } from '@/components/ui/button';
-import { Badge, Card, CardContent, CardHeader, CardTitle, Checkbox, Label, Select, Textarea, type BadgeVariant } from '@/components/ui/primitives';
+import {
+  Badge,
+  Card,
+  CardContent,
+  CardHeader,
+  CardTitle,
+  Checkbox,
+  Label,
+  Select,
+  Textarea,
+  type BadgeVariant,
+} from '@/components/ui/primitives';
 import { Dialog, DialogContent, DialogFooter } from '@/components/ui/overlays';
 import { DataTable, type Column } from '@/components/data-table';
 import { DescriptionList, Field, PageHeader, StatCard } from '@/components/common';
@@ -80,7 +91,8 @@ const VARIANT: Record<string, BadgeVariant> = {
   issued: 'info',
   cancelled: 'destructive',
 };
-const units = (d: Pick<SalesDoc, 'units'>) => d.units?.map((u) => (u.blockCode ? `${u.blockCode}-${u.plotNumber}` : u.plotNumber)).join(', ');
+const units = (d: Pick<SalesDoc, 'units'>) =>
+  d.units?.map((u) => (u.blockCode ? `${u.blockCode}-${u.plotNumber}` : u.plotNumber)).join(', ');
 const dateOf = (v: unknown) => (typeof v === 'string' && v ? formatDate(v.slice(0, 10)) : '—');
 
 /** Kind-specific detail fields (money in rupees on the form, paise on the wire). */
@@ -102,13 +114,28 @@ function detailFields(kind: SalesDocKind, consultants: { id: string; name: strin
       { name: 'deedNumber', label: 'Deed number', type: 'text' },
       { name: 'stampDutyPaise', label: 'Stamp duty', type: 'money' },
       { name: 'registrationFeePaise', label: 'Registration fee', type: 'money' },
-      { name: 'consultantId', label: 'Registry consultant', type: 'select', options: consultants.map((c) => ({ value: c.id, label: c.name })), emptyLabel: 'None' },
+      {
+        name: 'consultantId',
+        label: 'Registry consultant',
+        type: 'select',
+        options: consultants.map((c) => ({ value: c.id, label: c.name })),
+        emptyLabel: 'None',
+      },
     ];
   if (kind === 'possession')
     return [
       { name: 'offeredOn', label: 'Possession offered on', type: 'date' },
       { name: 'handedOverOn', label: 'Handed over on', type: 'date' },
-      { name: 'possessionType', label: 'Type', type: 'select', options: [{ value: 'physical', label: 'Physical' }, { value: 'paper', label: 'Paper (symbolic)' }], emptyLabel: '—' },
+      {
+        name: 'possessionType',
+        label: 'Type',
+        type: 'select',
+        options: [
+          { value: 'physical', label: 'Physical' },
+          { value: 'paper', label: 'Paper (symbolic)' },
+        ],
+        emptyLabel: '—',
+      },
       { name: 'keysHandedTo', label: 'Keys received by', type: 'text' },
     ];
   return [];
@@ -145,7 +172,10 @@ export function SalesDocsPage({ kind }: { kind: SalesDocKind }) {
   const status = lp.filter('status');
   const query = { ...lp.query, kind, status, projectId: projectId ?? undefined };
   const q = useQuery({ queryKey: ['sales-docs', query], queryFn: () => api.page<SalesDoc>('/post-sales/documents', query) });
-  const summary = useQuery({ queryKey: ['sales-docs', 'summary', kind, projectId], queryFn: () => api.get<Record<string, number>>('/post-sales/documents/summary', { kind, projectId: projectId ?? undefined }) });
+  const summary = useQuery({
+    queryKey: ['sales-docs', 'summary', kind, projectId],
+    queryFn: () => api.get<Record<string, number>>('/post-sales/documents/summary', { kind, projectId: projectId ?? undefined }),
+  });
   const [creating, setCreating] = React.useState(false);
   const [bulk, setBulk] = React.useState(false);
   const statuses = SALES_DOC_STATUSES[kind];
@@ -157,17 +187,41 @@ export function SalesDocsPage({ kind }: { kind: SalesDocKind }) {
     { key: 'project', header: 'Project', hideOnMobile: true, cell: (r) => r.projectId?.name ?? '—' },
     ...(kind === 'registry'
       ? ([
-          { key: 'deed', header: 'Deed / scheduled', cell: (r) => (r.details.deedNumber ? String(r.details.deedNumber) : `Scheduled ${dateOf(r.details.scheduledOn)}`) },
+          {
+            key: 'deed',
+            header: 'Deed / scheduled',
+            cell: (r) => (r.details?.deedNumber ? String(r.details?.deedNumber) : `Scheduled ${dateOf(r.details?.scheduledOn)}`),
+          },
         ] as Column<SalesDoc>[])
       : kind === 'possession'
-        ? ([{ key: 'handover', header: 'Handover', cell: (r) => (r.details.handedOverOn ? dateOf(r.details.handedOverOn) : `Offered ${dateOf(r.details.offeredOn ?? r.date)}`) }] as Column<SalesDoc>[])
+        ? ([
+            {
+              key: 'handover',
+              header: 'Handover',
+              cell: (r) =>
+                r.details?.handedOverOn ? dateOf(r.details?.handedOverOn) : `Offered ${dateOf(r.details?.offeredOn ?? r.date)}`,
+            },
+          ] as Column<SalesDoc>[])
         : kind === 'agreement'
-          ? ([{ key: 'executed', header: 'Executed', cell: (r) => dateOf(r.details.executedOn) }] as Column<SalesDoc>[])
-          : ([{ key: 'payBy', header: 'Pay by', cell: (r) => dateOf(r.details.payBy) }] as Column<SalesDoc>[])),
+          ? ([{ key: 'executed', header: 'Executed', cell: (r) => dateOf(r.details?.executedOn) }] as Column<SalesDoc>[])
+          : ([{ key: 'payBy', header: 'Pay by', cell: (r) => dateOf(r.details?.payBy) }] as Column<SalesDoc>[])),
     ...(kind !== 'possession'
-      ? ([{ key: 'amount', header: kind === 'demand' ? 'Demanded' : 'Stamp + fees', sortKey: 'amountPaise', align: 'right', cell: (r) => <span className="tabular">{r.amountPaise ? formatINR(r.amountPaise) : '—'}</span> }] as Column<SalesDoc>[])
+      ? ([
+          {
+            key: 'amount',
+            header: kind === 'demand' ? 'Demanded' : 'Stamp + fees',
+            sortKey: 'amountPaise',
+            align: 'right',
+            cell: (r) => <span className="tabular">{r.amountPaise ? formatINR(r.amountPaise) : '—'}</span>,
+          },
+        ] as Column<SalesDoc>[])
       : []),
-    { key: 'status', header: 'Status', sortKey: 'status', cell: (r) => <Badge variant={VARIANT[r.status] ?? 'secondary'}>{titleCase(r.status)}</Badge> },
+    {
+      key: 'status',
+      header: 'Status',
+      sortKey: 'status',
+      cell: (r) => <Badge variant={VARIANT[r.status] ?? 'secondary'}>{titleCase(r.status)}</Badge>,
+    },
   ];
   return (
     <>
@@ -194,7 +248,12 @@ export function SalesDocsPage({ kind }: { kind: SalesDocKind }) {
       </div>
       <div className="mb-4 flex flex-wrap items-center gap-2">
         <SearchInput value={lp.q} onChange={lp.setQ} placeholder="Search reference" className="w-full sm:w-64" />
-        <Select className="h-9 w-auto" value={status ?? ''} onChange={(e) => lp.setFilter('status', e.target.value || undefined)} aria-label="Status">
+        <Select
+          className="h-9 w-auto"
+          value={status ?? ''}
+          onChange={(e) => lp.setFilter('status', e.target.value || undefined)}
+          aria-label="Status"
+        >
           <option value="">All statuses</option>
           {statuses.map((s) => (
             <option key={s} value={s}>
@@ -269,7 +328,9 @@ function CreateDocDialog({ kind, open, onOpenChange }: { kind: SalesDocKind; ope
         bookingId: booking!.id,
         date,
         remarks: remarks || undefined,
-        ...(kind === 'demand' ? { dueUpTo: dueUpTo || undefined, payBy: payBy || undefined } : { details: toDetailsPayload(fields, values, false) }),
+        ...(kind === 'demand'
+          ? { dueUpTo: dueUpTo || undefined, payBy: payBy || undefined }
+          : { details: toDetailsPayload(fields, values, false) }),
         ...(kind === 'registry' || kind === 'possession' ? { overrideDues: override } : {}),
       }),
     onSuccess: (d) => {
@@ -287,19 +348,50 @@ function CreateDocDialog({ kind, open, onOpenChange }: { kind: SalesDocKind; ope
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent title={`New ${cfg.singular}`} className="max-w-2xl">
         <div className="grid gap-4 sm:grid-cols-2">
-          <Field label="Booking" htmlFor="sd-booking" required className="sm:col-span-2" hint={kind === 'demand' ? undefined : 'Only confirmed bookings'}>
-            <BookingPicker id="sd-booking" value={booking} onChange={setBooking} statuses={kind === 'demand' ? ['booked', 'reserved'] : ['booked']} />
+          <Field
+            label="Booking"
+            htmlFor="sd-booking"
+            required
+            className="sm:col-span-2"
+            hint={kind === 'demand' ? undefined : 'Only confirmed bookings'}
+          >
+            <BookingPicker
+              id="sd-booking"
+              value={booking}
+              onChange={setBooking}
+              statuses={kind === 'demand' ? ['booked', 'reserved'] : ['booked']}
+            />
           </Field>
           <Field label="Date" htmlFor="sd-date" required>
-            <input id="sd-date" type="date" className="h-9 rounded-md border bg-card px-3 text-sm" value={date} onChange={(e) => setDate(e.target.value)} />
+            <input
+              id="sd-date"
+              type="date"
+              className="h-9 rounded-md border bg-card px-3 text-sm"
+              value={date}
+              onChange={(e) => setDate(e.target.value)}
+            />
           </Field>
           {kind === 'demand' && (
             <>
               <Field label="Include dues up to" htmlFor="sd-due" hint="Defaults to the date plus the lead days in Settings">
-                <input id="sd-due" type="date" className="h-9 rounded-md border bg-card px-3 text-sm" value={dueUpTo} min={date} onChange={(e) => setDueUpTo(e.target.value)} />
+                <input
+                  id="sd-due"
+                  type="date"
+                  className="h-9 rounded-md border bg-card px-3 text-sm"
+                  value={dueUpTo}
+                  min={date}
+                  onChange={(e) => setDueUpTo(e.target.value)}
+                />
               </Field>
               <Field label="Pay by" htmlFor="sd-payby" hint="Defaults to 7 days from the date">
-                <input id="sd-payby" type="date" className="h-9 rounded-md border bg-card px-3 text-sm" value={payBy} min={date} onChange={(e) => setPayBy(e.target.value)} />
+                <input
+                  id="sd-payby"
+                  type="date"
+                  className="h-9 rounded-md border bg-card px-3 text-sm"
+                  value={payBy}
+                  min={date}
+                  onChange={(e) => setPayBy(e.target.value)}
+                />
               </Field>
             </>
           )}
@@ -329,7 +421,12 @@ function BulkDemandDialog({ open, onOpenChange }: { open: boolean; onOpenChange:
   const [date, setDate] = React.useState(todayInIndia());
   const [dueUpTo, setDueUpTo] = React.useState('');
   const save = useMutation({
-    mutationFn: () => api.post<{ created: number; skipped: number }>('/post-sales/documents/demand/bulk', { projectId, date, dueUpTo: dueUpTo || undefined }),
+    mutationFn: () =>
+      api.post<{ created: number; skipped: number }>('/post-sales/documents/demand/bulk', {
+        projectId,
+        date,
+        dueUpTo: dueUpTo || undefined,
+      }),
     onSuccess: (r) => {
       qc.invalidateQueries({ queryKey: ['sales-docs'] });
       toast.success(`${r.created} demand letters issued${r.skipped ? `, ${r.skipped} skipped (already issued today)` : ''}`);
@@ -339,16 +436,32 @@ function BulkDemandDialog({ open, onOpenChange }: { open: boolean; onOpenChange:
   });
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent title="Issue demand letters for a project" description="One letter per active booking with installments due by the cut-off date.">
+      <DialogContent
+        title="Issue demand letters for a project"
+        description="One letter per active booking with installments due by the cut-off date."
+      >
         <Field label="Project" htmlFor="bd-project" required>
           <ProjectSelect id="bd-project" value={projectId} onChange={setProjectId} />
         </Field>
         <div className="grid gap-4 sm:grid-cols-2">
           <Field label="Letter date" htmlFor="bd-date" required>
-            <input id="bd-date" type="date" className="h-9 rounded-md border bg-card px-3 text-sm" value={date} onChange={(e) => setDate(e.target.value)} />
+            <input
+              id="bd-date"
+              type="date"
+              className="h-9 rounded-md border bg-card px-3 text-sm"
+              value={date}
+              onChange={(e) => setDate(e.target.value)}
+            />
           </Field>
           <Field label="Include dues up to" htmlFor="bd-due" hint="Blank = letter date + lead days">
-            <input id="bd-due" type="date" className="h-9 rounded-md border bg-card px-3 text-sm" value={dueUpTo} min={date} onChange={(e) => setDueUpTo(e.target.value)} />
+            <input
+              id="bd-due"
+              type="date"
+              className="h-9 rounded-md border bg-card px-3 text-sm"
+              value={dueUpTo}
+              min={date}
+              onChange={(e) => setDueUpTo(e.target.value)}
+            />
           </Field>
         </div>
         <DialogFooter>
@@ -390,8 +503,15 @@ export function SalesDocDetailPage({ kind }: { kind: SalesDocKind }) {
     if (!q.data) return;
     const v: Record<string, unknown> = {};
     for (const f of fields) {
-      const raw = q.data.details[f.name];
-      v[f.name] = raw === undefined || raw === null ? '' : f.type === 'money' ? paiseToInput(Number(raw)) : f.name === 'consultantId' ? String(raw) : String(raw).slice(0, f.type === 'date' ? 10 : undefined);
+      const raw = q.data.details?.[f.name];
+      v[f.name] =
+        raw === undefined || raw === null
+          ? ''
+          : f.type === 'money'
+            ? paiseToInput(Number(raw))
+            : f.name === 'consultantId'
+              ? String(raw)
+              : String(raw).slice(0, f.type === 'date' ? 10 : undefined);
     }
     setValues(v);
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -434,8 +554,11 @@ export function SalesDocDetailPage({ kind }: { kind: SalesDocKind }) {
   if (q.isError) return <ErrorState error={q.error} onRetry={() => q.refetch()} />;
   const d = q.data;
   const editable = can('postSales.update') && d.status !== 'cancelled';
-  const lines = (d.details.lines as { name: string; dueDate: string; amountPaise: number; paidPaise: number; balancePaise: number }[] | undefined) ?? [];
-  const needsDuesCheck = transition && ((kind === 'registry' && transition.to === 'registered') || (kind === 'possession' && transition.to === 'handed_over'));
+  const details = d.details ?? {};
+  const lines =
+    (details.lines as { name: string; dueDate: string; amountPaise: number; paidPaise: number; balancePaise: number }[] | undefined) ?? [];
+  const needsDuesCheck =
+    transition && ((kind === 'registry' && transition.to === 'registered') || (kind === 'possession' && transition.to === 'handed_over'));
   return (
     <>
       <PageHeader
@@ -452,7 +575,12 @@ export function SalesDocDetailPage({ kind }: { kind: SalesDocKind }) {
               <FileDown /> Print / PDF
             </Button>
             {d.bookingId && (kind === 'demand' || kind === 'possession') && (
-              <WhatsAppButton entityType="booking" entityId={d.bookingId.id} categories={kind === 'demand' ? ['demand', 'payment_reminder'] : ['possession']} size="default" />
+              <WhatsAppButton
+                entityType="booking"
+                entityId={d.bookingId.id}
+                categories={kind === 'demand' ? ['demand', 'payment_reminder'] : ['possession']}
+                size="default"
+              />
             )}
             {editable &&
               (NEXT[kind][d.status] ?? []).map((t) => (
@@ -460,17 +588,20 @@ export function SalesDocDetailPage({ kind }: { kind: SalesDocKind }) {
                   {t.label} <ArrowRight />
                 </Button>
               ))}
-            {editable && SALES_DOC_STATUSES[kind].includes('cancelled') && (kind === 'agreement' || ['scheduled', 'offered', 'issued'].includes(d.status)) && (
-              <Button variant="ghost" className="text-destructive" onClick={() => setTransition({ to: 'cancelled', label: 'Cancel' })}>
-                <XCircle /> Cancel
-              </Button>
-            )}
+            {editable &&
+              SALES_DOC_STATUSES[kind].includes('cancelled') &&
+              (kind === 'agreement' || ['scheduled', 'offered', 'issued'].includes(d.status)) && (
+                <Button variant="ghost" className="text-destructive" onClick={() => setTransition({ to: 'cancelled', label: 'Cancel' })}>
+                  <XCircle /> Cancel
+                </Button>
+              )}
           </>
         }
       />
       {d.duesOverridden && (
         <p className="mb-4 flex items-center gap-2 rounded-md border border-amber-200 bg-amber-50 p-3 text-sm text-amber-900 dark:border-amber-900 dark:bg-amber-950/30 dark:text-amber-200">
-          <AlertTriangle className="size-4" /> Created with {formatINR(d.outstandingAtCreationPaise ?? 0)} outstanding (override). {d.remarks}
+          <AlertTriangle className="size-4" /> Created with {formatINR(d.outstandingAtCreationPaise ?? 0)} outstanding (override).{' '}
+          {d.remarks}
         </p>
       )}
       <div className="grid gap-6 lg:grid-cols-[1fr_360px]">
@@ -505,7 +636,7 @@ export function SalesDocDetailPage({ kind }: { kind: SalesDocKind }) {
                   <tfoot>
                     <tr className="border-t font-semibold">
                       <td className="pt-2" colSpan={4}>
-                        Total demanded · pay by {dateOf(d.details.payBy)}
+                        Total demanded · pay by {dateOf(details.payBy)}
                       </td>
                       <td className="pt-2 text-right tabular">{formatINR(d.amountPaise)}</td>
                     </tr>
@@ -552,7 +683,10 @@ export function SalesDocDetailPage({ kind }: { kind: SalesDocKind }) {
                   },
                   { label: 'Customer', value: d.customerId ? `${d.customerId.name} · ${d.customerId.phone}` : '—' },
                   { label: 'Units', value: units(d) || '—' },
-                  { label: 'Consideration', value: d.bookingId?.netAmountPaise !== undefined ? formatINR(d.bookingId.netAmountPaise) : '—' },
+                  {
+                    label: 'Consideration',
+                    value: d.bookingId?.netAmountPaise !== undefined ? formatINR(d.bookingId.netAmountPaise) : '—',
+                  },
                   { label: 'Received', value: d.bookingId?.receivedPaise !== undefined ? formatINR(d.bookingId.receivedPaise) : '—' },
                   { label: 'Document date', value: formatDate(d.date.slice(0, 10)) },
                 ]}
@@ -583,7 +717,14 @@ export function SalesDocDetailPage({ kind }: { kind: SalesDocKind }) {
         </div>
       </div>
       <Dialog open={!!transition} onOpenChange={(o) => !o && setTransition(null)}>
-        <DialogContent title={`${transition?.label ?? ''} – ${d.number}`} description={transition?.to === 'registered' && kind === 'registry' ? 'The deed number and registration date from Details are saved, and the units are marked sold.' : undefined}>
+        <DialogContent
+          title={`${transition?.label ?? ''} – ${d.number}`}
+          description={
+            transition?.to === 'registered' && kind === 'registry'
+              ? 'The deed number and registration date from Details are saved, and the units are marked sold.'
+              : undefined
+          }
+        >
           <Field label="Remarks" htmlFor="tr-remarks">
             <Textarea rows={2} value={remarks} onChange={(e) => setRemarks(e.target.value)} />
           </Field>
@@ -592,7 +733,11 @@ export function SalesDocDetailPage({ kind }: { kind: SalesDocKind }) {
             <Button variant="outline" onClick={() => setTransition(null)}>
               Back
             </Button>
-            <Button variant={transition?.to === 'cancelled' ? 'destructive' : 'default'} loading={move.isPending} onClick={() => transition && move.mutate(transition.to)}>
+            <Button
+              variant={transition?.to === 'cancelled' ? 'destructive' : 'default'}
+              loading={move.isPending}
+              onClick={() => transition && move.mutate(transition.to)}
+            >
               Confirm
             </Button>
           </DialogFooter>

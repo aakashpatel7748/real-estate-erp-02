@@ -332,7 +332,7 @@ export function RolesPage() {
   return (
     <>
       <PageHeader
-        title="Roles & permissions"
+        title="Roles & Permissions"
         description="The server enforces these on every request"
         actions={
           <Can permission="roles.create">
@@ -482,7 +482,7 @@ export function AuditPage() {
   ];
   return (
     <>
-      <PageHeader title="Audit log" description="Immutable history of sensitive operations" />
+      <PageHeader title="Activity Log" description="Immutable history of sensitive operations" />
       <div className="mb-4 flex flex-col gap-2 lg:flex-row">
         <Select
           className="lg:w-48"
@@ -627,151 +627,162 @@ export function CompanySettingsPage({ section = 'profile' }: { section?: 'profil
     <>
       <PageHeader
         title={section === 'profile' ? 'Company Profile' : 'Settings'}
-        description={section === 'profile' ? 'Appears on receipts, letters, quotations and agreements' : 'Numbering, sales rules and post-sales controls'}
+        description={
+          section === 'profile'
+            ? 'Appears on receipts, letters, quotations and agreements'
+            : 'Numbering, sales rules and post-sales controls'
+        }
       />
       <div className="grid gap-4 lg:grid-cols-2">
         {section === 'profile' && (
-        <Card>
-          <CardHeader>
-            <CardTitle>Profile</CardTitle>
-          </CardHeader>
-          <CardContent className="grid gap-4 sm:grid-cols-2">
-            <Field label="Display name" htmlFor="co-name" className="sm:col-span-2">
-              <Input disabled={disabled} value={form.name} onChange={(e) => set({ name: e.target.value })} />
-            </Field>
-            <Field label="Legal name" htmlFor="co-legal" className="sm:col-span-2">
-              <Input disabled={disabled} value={form.legalName ?? ''} onChange={(e) => set({ legalName: e.target.value })} />
-            </Field>
-            <Field label="GSTIN" htmlFor="co-gst">
-              <Input disabled={disabled} className="uppercase" value={form.gstin ?? ''} onChange={(e) => set({ gstin: e.target.value })} />
-            </Field>
-            <Field label="PAN" htmlFor="co-pan">
-              <Input disabled={disabled} className="uppercase" value={form.pan ?? ''} onChange={(e) => set({ pan: e.target.value })} />
-            </Field>
-            <Field label="Phone" htmlFor="co-phone">
-              <Input disabled={disabled} value={form.phone ?? ''} onChange={(e) => set({ phone: e.target.value })} />
-            </Field>
-            <Field label="Email" htmlFor="co-email">
-              <Input disabled={disabled} value={form.email ?? ''} onChange={(e) => set({ email: e.target.value })} />
-            </Field>
-            <Field label="Address" htmlFor="co-line1" className="sm:col-span-2">
-              <Input disabled={disabled} value={form.address?.line1 ?? ''} onChange={(e) => setA({ line1: e.target.value })} />
-            </Field>
-            <Field label="City" htmlFor="co-city">
-              <Input disabled={disabled} value={form.address?.city ?? ''} onChange={(e) => setA({ city: e.target.value })} />
-            </Field>
-            <Field label="State" htmlFor="co-state">
-              <Input disabled={disabled} value={form.address?.state ?? ''} onChange={(e) => setA({ state: e.target.value })} />
-            </Field>
-            <Field label="PIN code" htmlFor="co-pin">
-              <Input disabled={disabled} value={form.address?.pincode ?? ''} onChange={(e) => setA({ pincode: e.target.value })} />
-            </Field>
-          </CardContent>
-        </Card>
+          <Card>
+            <CardHeader>
+              <CardTitle>Profile</CardTitle>
+            </CardHeader>
+            <CardContent className="grid gap-4 sm:grid-cols-2">
+              <Field label="Display name" htmlFor="co-name" className="sm:col-span-2">
+                <Input disabled={disabled} value={form.name} onChange={(e) => set({ name: e.target.value })} />
+              </Field>
+              <Field label="Legal name" htmlFor="co-legal" className="sm:col-span-2">
+                <Input disabled={disabled} value={form.legalName ?? ''} onChange={(e) => set({ legalName: e.target.value })} />
+              </Field>
+              <Field label="GSTIN" htmlFor="co-gst">
+                <Input
+                  disabled={disabled}
+                  className="uppercase"
+                  value={form.gstin ?? ''}
+                  onChange={(e) => set({ gstin: e.target.value })}
+                />
+              </Field>
+              <Field label="PAN" htmlFor="co-pan">
+                <Input disabled={disabled} className="uppercase" value={form.pan ?? ''} onChange={(e) => set({ pan: e.target.value })} />
+              </Field>
+              <Field label="Phone" htmlFor="co-phone">
+                <Input disabled={disabled} value={form.phone ?? ''} onChange={(e) => set({ phone: e.target.value })} />
+              </Field>
+              <Field label="Email" htmlFor="co-email">
+                <Input disabled={disabled} value={form.email ?? ''} onChange={(e) => set({ email: e.target.value })} />
+              </Field>
+              <Field label="Address" htmlFor="co-line1" className="sm:col-span-2">
+                <Input disabled={disabled} value={form.address?.line1 ?? ''} onChange={(e) => setA({ line1: e.target.value })} />
+              </Field>
+              <Field label="City" htmlFor="co-city">
+                <Input disabled={disabled} value={form.address?.city ?? ''} onChange={(e) => setA({ city: e.target.value })} />
+              </Field>
+              <Field label="State" htmlFor="co-state">
+                <Input disabled={disabled} value={form.address?.state ?? ''} onChange={(e) => setA({ state: e.target.value })} />
+              </Field>
+              <Field label="PIN code" htmlFor="co-pin">
+                <Input disabled={disabled} value={form.address?.pincode ?? ''} onChange={(e) => setA({ pincode: e.target.value })} />
+              </Field>
+            </CardContent>
+          </Card>
         )}
         {section === 'settings' && (
-        <>
-        <Card>
-          <CardHeader>
-            <CardTitle>Sales & receipts</CardTitle>
-          </CardHeader>
-          <CardContent className="grid gap-4 sm:grid-cols-2">
-            <Field
-              label="Overpayments"
-              htmlFor="co-over"
-              hint="What happens when a receipt exceeds the outstanding dues"
-              className="sm:col-span-2"
-            >
-              <Select
-                disabled={disabled}
-                value={form.settings.overpaymentPolicy}
-                onChange={(e) => setS({ overpaymentPolicy: e.target.value })}
-              >
-                {OVERPAYMENT_POLICIES.map((p) => (
-                  <option key={p} value={p}>
-                    {p === 'advance' ? 'Accept and hold as customer advance' : 'Reject the receipt'}
-                  </option>
-                ))}
-              </Select>
-            </Field>
-            <Field label="Default reservation hold (hours)" htmlFor="co-hold">
-              <Input
-                disabled={disabled}
-                inputMode="numeric"
-                value={String(form.settings.reservationHoldHours)}
-                onChange={(e) => setS({ reservationHoldHours: Number(e.target.value) || 0 })}
-              />
-            </Field>
-            <div />
-            <Field label="Booking number prefix" htmlFor="co-bp">
-              <Input
-                disabled={disabled}
-                className="uppercase"
-                value={form.settings.bookingPrefix}
-                onChange={(e) => setS({ bookingPrefix: e.target.value.toUpperCase() })}
-              />
-            </Field>
-            <Field label="Receipt number prefix" htmlFor="co-rp">
-              <Input
-                disabled={disabled}
-                className="uppercase"
-                value={form.settings.receiptPrefix}
-                onChange={(e) => setS({ receiptPrefix: e.target.value.toUpperCase() })}
-              />
-            </Field>
-            <Field label="Quotation validity (days)" htmlFor="co-qv">
-              <Input
-                disabled={disabled}
-                inputMode="numeric"
-                value={String(form.settings.quotationValidityDays ?? 15)}
-                onChange={(e) => setS({ quotationValidityDays: Number(e.target.value) || 0 })}
-              />
-            </Field>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardHeader>
-            <CardTitle>Post sales & collections</CardTitle>
-          </CardHeader>
-          <CardContent className="grid gap-4 sm:grid-cols-2">
-            <Field label="Demand letters include dues within (days)" htmlFor="co-dl">
-              <Input
-                disabled={disabled}
-                inputMode="numeric"
-                value={String(form.settings.demandLeadDays ?? 15)}
-                onChange={(e) => setS({ demandLeadDays: Number(e.target.value) || 0 })}
-              />
-            </Field>
-            <Field label="Late payment interest (% per month)" htmlFor="co-li" hint="Printed on demand letters">
-              <Input
-                disabled={disabled}
-                inputMode="decimal"
-                value={String((form.settings.lateInterestBpPerMonth ?? 0) / 100)}
-                onChange={(e) => setS({ lateInterestBpPerMonth: Math.round(Number(e.target.value || 0) * 100) })}
-              />
-            </Field>
-            <div className="flex items-center gap-2 sm:col-span-2">
-              <Checkbox
-                id="co-reg"
-                disabled={disabled}
-                checked={form.settings.registryRequiresFullPayment ?? true}
-                onCheckedChange={(c) => setS({ registryRequiresFullPayment: c === true })}
-              />
-              <Label htmlFor="co-reg">Require full payment before sale-deed registry</Label>
-            </div>
-            <div className="flex items-center gap-2 sm:col-span-2">
-              <Checkbox
-                id="co-pos"
-                disabled={disabled}
-                checked={form.settings.possessionRequiresFullPayment ?? true}
-                onCheckedChange={(c) => setS({ possessionRequiresFullPayment: c === true })}
-              />
-              <Label htmlFor="co-pos">Require full payment before possession</Label>
-            </div>
-            <p className="text-xs text-muted-foreground sm:col-span-2">An authorised user can still proceed with an override and a written remark.</p>
-          </CardContent>
-        </Card>
-        </>
+          <>
+            <Card>
+              <CardHeader>
+                <CardTitle>Sales & receipts</CardTitle>
+              </CardHeader>
+              <CardContent className="grid gap-4 sm:grid-cols-2">
+                <Field
+                  label="Overpayments"
+                  htmlFor="co-over"
+                  hint="What happens when a receipt exceeds the outstanding dues"
+                  className="sm:col-span-2"
+                >
+                  <Select
+                    disabled={disabled}
+                    value={form.settings.overpaymentPolicy}
+                    onChange={(e) => setS({ overpaymentPolicy: e.target.value })}
+                  >
+                    {OVERPAYMENT_POLICIES.map((p) => (
+                      <option key={p} value={p}>
+                        {p === 'advance' ? 'Accept and hold as customer advance' : 'Reject the receipt'}
+                      </option>
+                    ))}
+                  </Select>
+                </Field>
+                <Field label="Default reservation hold (hours)" htmlFor="co-hold">
+                  <Input
+                    disabled={disabled}
+                    inputMode="numeric"
+                    value={String(form.settings.reservationHoldHours)}
+                    onChange={(e) => setS({ reservationHoldHours: Number(e.target.value) || 0 })}
+                  />
+                </Field>
+                <div />
+                <Field label="Booking number prefix" htmlFor="co-bp">
+                  <Input
+                    disabled={disabled}
+                    className="uppercase"
+                    value={form.settings.bookingPrefix}
+                    onChange={(e) => setS({ bookingPrefix: e.target.value.toUpperCase() })}
+                  />
+                </Field>
+                <Field label="Receipt number prefix" htmlFor="co-rp">
+                  <Input
+                    disabled={disabled}
+                    className="uppercase"
+                    value={form.settings.receiptPrefix}
+                    onChange={(e) => setS({ receiptPrefix: e.target.value.toUpperCase() })}
+                  />
+                </Field>
+                <Field label="Quotation validity (days)" htmlFor="co-qv">
+                  <Input
+                    disabled={disabled}
+                    inputMode="numeric"
+                    value={String(form.settings.quotationValidityDays ?? 15)}
+                    onChange={(e) => setS({ quotationValidityDays: Number(e.target.value) || 0 })}
+                  />
+                </Field>
+              </CardContent>
+            </Card>
+            <Card>
+              <CardHeader>
+                <CardTitle>Post sales & collections</CardTitle>
+              </CardHeader>
+              <CardContent className="grid gap-4 sm:grid-cols-2">
+                <Field label="Demand letters include dues within (days)" htmlFor="co-dl">
+                  <Input
+                    disabled={disabled}
+                    inputMode="numeric"
+                    value={String(form.settings.demandLeadDays ?? 15)}
+                    onChange={(e) => setS({ demandLeadDays: Number(e.target.value) || 0 })}
+                  />
+                </Field>
+                <Field label="Late payment interest (% per month)" htmlFor="co-li" hint="Printed on demand letters">
+                  <Input
+                    disabled={disabled}
+                    inputMode="decimal"
+                    value={String((form.settings.lateInterestBpPerMonth ?? 0) / 100)}
+                    onChange={(e) => setS({ lateInterestBpPerMonth: Math.round(Number(e.target.value || 0) * 100) })}
+                  />
+                </Field>
+                <div className="flex items-center gap-2 sm:col-span-2">
+                  <Checkbox
+                    id="co-reg"
+                    disabled={disabled}
+                    checked={form.settings.registryRequiresFullPayment ?? true}
+                    onCheckedChange={(c) => setS({ registryRequiresFullPayment: c === true })}
+                  />
+                  <Label htmlFor="co-reg">Require full payment before sale-deed registry</Label>
+                </div>
+                <div className="flex items-center gap-2 sm:col-span-2">
+                  <Checkbox
+                    id="co-pos"
+                    disabled={disabled}
+                    checked={form.settings.possessionRequiresFullPayment ?? true}
+                    onCheckedChange={(c) => setS({ possessionRequiresFullPayment: c === true })}
+                  />
+                  <Label htmlFor="co-pos">Require full payment before possession</Label>
+                </div>
+                <p className="text-xs text-muted-foreground sm:col-span-2">
+                  An authorised user can still proceed with an override and a written remark.
+                </p>
+              </CardContent>
+            </Card>
+          </>
         )}
       </div>
       {!disabled && (
