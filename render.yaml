@@ -1,0 +1,24 @@
+services:
+  - type: web
+    name: pipeline-erp-api
+    runtime: node
+    plan: free
+    buildCommand: npm install && npm run build --workspace @erp/api
+    startCommand: npm run start --workspace @erp/api
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: PORT
+        value: 10000
+      - key: MONGODB_URI
+        sync: false
+      - key: JWT_ACCESS_SECRET
+        value: tnXBXdYaCiT6yFOcC3mbgQkvFu4-7NycmQV0k-svTwpr1uL2tUmIWM0gm5nDFohx
+      - key: CORS_ORIGINS
+        value: https://pipeline-real-state-erp-green.vercel.app
+      - key: APP_URL
+        value: https://pipeline-real-state-erp-green.vercel.app
+      - key: STORAGE_DRIVER
+        value: local
+      - key: MAX_UPLOAD_MB
+        value: "15"
