@@ -12,16 +12,17 @@ import { Plot } from '../plots/plot.models';
 import { Project } from '../projects/project.models';
 import { Membership } from '../users/user.models';
 import { Lead, LeadActivity } from './crm.models';
+import { assertLeadSource } from './lead-settings';
 
 /** Restricted users see leads of their projects, plus leads assigned to or created by them. */
-function visibility(ctx: TenantContext): Record<string, unknown> {
+export function leadVisibility(ctx: TenantContext): Record<string, unknown> {
   const f: Record<string, unknown> = { companyId: ctx.companyId, deletedAt: null };
   if (ctx.projectScope !== null) f.$or = [{ projectId: { $in: ctx.projectScope } }, { assignedTo: ctx.userId }, { createdBy: ctx.userId }];
   return f;
 }
 
 async function loadLead(ctx: TenantContext, id: string) {
-  const lead = await Lead.findOne({ ...visibility(ctx), _id: toObjectId(id) });
+  const lead = await Lead.findOne({ ...leadVisibility(ctx), _id: toObjectId(id) });
   if (!lead) throw notFound('Lead');
   return lead;
 }
@@ -61,7 +62,7 @@ async function notifyAssignee(ctx: TenantContext, lead: { _id: Types.ObjectId; n
     userId: assignee,
     type: 'lead_assigned',
     title: `New lead assigned: ${lead.name}`,
-    link: `/crm?lead=${lead._id}`,
+    link: `/pre-sales/leads?lead=${lead._id}`,
   });
 }
 
@@ -78,7 +79,7 @@ export interface LeadListQuery {
 }
 
 export async function listLeads(ctx: TenantContext, q: LeadListQuery) {
-  const and: Record<string, unknown>[] = [visibility(ctx)];
+  const and: Record<string, unknown>[] = [leadVisibility(ctx)];
   if (q.projectId) {
     assertProjectAccess(ctx, q.projectId);
     and.push({ projectId: toObjectId(q.projectId) });
@@ -110,7 +111,7 @@ export async function listLeads(ctx: TenantContext, q: LeadListQuery) {
 }
 
 export async function leadSummary(ctx: TenantContext, projectId?: string) {
-  const match: Record<string, unknown> = { ...visibility(ctx) };
+  const match: Record<string, unknown> = { ...leadVisibility(ctx) };
   if (projectId) {
     assertProjectAccess(ctx, projectId);
     match.projectId = toObjectId(projectId);
@@ -130,7 +131,7 @@ export async function leadSummary(ctx: TenantContext, projectId?: string) {
 }
 
 export async function getLead(ctx: TenantContext, id: string) {
-  const lead = await Lead.findOne({ ...visibility(ctx), _id: toObjectId(id) })
+  const lead = await Lead.findOne({ ...leadVisibility(ctx), _id: toObjectId(id) })
     .populate('assignedTo', 'name email')
     .populate({ path: 'projectId', select: 'name code', match: { companyId: ctx.companyId } })
     .populate({ path: 'brokerId', select: 'name phone', match: { companyId: ctx.companyId } })
@@ -144,6 +145,7 @@ export async function getLead(ctx: TenantContext, id: string) {
 
 export async function createLead(ctx: TenantContext, input: LeadInput) {
   await validateRefs(ctx, input);
+  await assertLeadSource(ctx.companyId, input.source, true);
   if (ctx.projectScope !== null && !input.projectId && !input.assignedTo) input.assignedTo = String(ctx.userId);
   const lead = await Lead.create({ companyId: ctx.companyId, ...normalize(input), status: 'new', createdBy: ctx.userId, lastActivityAt: new Date() });
   await logActivity(ctx, lead._id, 'note', 'Lead created');
@@ -156,6 +158,7 @@ export async function updateLead(ctx: TenantContext, id: string, input: Partial<
   const lead = await loadLead(ctx, id);
   const { assignedTo: _ignored, ...rest } = input; // assignment has its own permission and endpoint
   await validateRefs(ctx, { ...rest, projectId: rest.projectId ?? (lead.projectId ? String(lead.projectId) : undefined) });
+  if (rest.source !== undefined && rest.source !== lead.source) await assertLeadSource(ctx.companyId, rest.source, true);
   lead.set(normalize(rest));
   await lead.save();
   await audit(ctx, { action: 'crm.update', entityType: 'lead', entityId: lead._id, changes: rest });
@@ -208,7 +211,7 @@ export async function assignLead(ctx: TenantContext, id: string, assignedTo: str
  */
 export async function convertLead(ctx: TenantContext, id: string) {
   return withTransaction(async (session) => {
-    const lead = await Lead.findOne({ ...visibility(ctx), _id: toObjectId(id) }).session(session);
+    const lead = await Lead.findOne({ ...leadVisibility(ctx), _id: toObjectId(id) }).session(session);
     if (!lead) throw notFound('Lead');
     if (lead.customerId) throw businessRule('This lead has already been converted');
     if (lead.status === 'lost') throw businessRule('Reopen the lead before converting it');
@@ -281,7 +284,7 @@ export async function runFollowUpReminders(now = new Date()): Promise<number> {
             type: 'lead_followup',
             title: `Follow up: ${l.name}`,
             body: `${l.phone}${l.nextFollowUpAt && l.nextFollowUpAt < now ? ' · overdue' : ' · due today'}`,
-            link: `/crm?lead=${l._id}`,
+            link: `/pre-sales/leads?lead=${l._id}`,
             dedupeKey: `followup:${l._id}:${day}`,
           },
         },

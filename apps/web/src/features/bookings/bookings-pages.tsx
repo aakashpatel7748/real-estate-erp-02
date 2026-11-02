@@ -92,7 +92,7 @@ export function BookingsPage() {
               </Button>
             </Can>
             <Can permission="bookings.create">
-              <Button onClick={() => navigate(`/bookings/new${projectId ? `?project=${projectId}` : ''}`)}>
+              <Button onClick={() => navigate(`/post-sales/bookings/new${projectId ? `?project=${projectId}` : ''}`)}>
                 <Plus /> New booking
               </Button>
             </Can>
@@ -128,7 +128,7 @@ export function BookingsPage() {
         onPageSizeChange={lp.setPageSize}
         sort={lp.sort}
         onSortChange={lp.setSort}
-        onRowClick={(b) => navigate(`/bookings/${b.id}`)}
+        onRowClick={(b) => navigate(`/post-sales/bookings/${b.id}`)}
         empty={<EmptyState title="No bookings found" />}
       />
     </>
@@ -263,7 +263,7 @@ export function NewBookingPage() {
       qc.invalidateQueries({ queryKey: ['map', projectId] });
       qc.invalidateQueries({ queryKey: ['dashboard'] });
       toast.success(`Booking ${b.bookingNumber} created`);
-      navigate(`/bookings/${b.id}`, { replace: true });
+      navigate(`/post-sales/bookings/${b.id}`, { replace: true });
     },
     onError: (e) => {
       // A failed request releases the key server-side; use a fresh one for the next attempt.
@@ -285,7 +285,7 @@ export function NewBookingPage() {
   return (
     <>
       <PageHeader
-        breadcrumbs={[{ label: 'Bookings', to: '/bookings' }, { label: 'New booking' }]}
+        breadcrumbs={[{ label: 'Bookings', to: '/post-sales/bookings' }, { label: 'New booking' }]}
         title="New booking"
         description="Plots are held only when you submit; availability is re-checked at that moment."
       />
@@ -726,7 +726,7 @@ export function BookingDetailPage() {
   return (
     <>
       <PageHeader
-        breadcrumbs={[{ label: 'Bookings', to: '/bookings' }, { label: b.bookingNumber }]}
+        breadcrumbs={[{ label: 'Bookings', to: '/post-sales/bookings' }, { label: b.bookingNumber }]}
         title={
           <span className="flex items-center gap-3">
             {b.bookingNumber} <StatusBadge status={b.status} kind="booking" />
@@ -734,7 +734,7 @@ export function BookingDetailPage() {
         }
         description={
           <>
-            <Link className="hover:underline" to={`/customers/${b.customerId.id}`}>
+            <Link className="hover:underline" to={`/post-sales/customers/${b.customerId.id}`}>
               {b.customerId.name}
             </Link>{' '}
             · {b.projectId.name} · booked on {formatDate(b.bookingDate.slice(0, 10))}
@@ -851,7 +851,7 @@ export function BookingDetailPage() {
                 {b.items.map((i) => (
                   <li key={i.id} className="flex justify-between gap-2 py-2">
                     <span>
-                      <Link to={`/inventory?project=${b.projectId.id}&plot=${i.plotId}`} className="font-medium hover:underline">
+                      <Link to={`/master/units-inventory?project=${b.projectId.id}&plot=${i.plotId}`} className="font-medium hover:underline">
                         Plot {i.blockCode ? `${i.blockCode}-` : ''}
                         {i.plotNumber}
                       </Link>
@@ -927,7 +927,7 @@ export function BookingDetailPage() {
                   {b.payments.map((p) => (
                     <tr key={p.id} className="border-b last:border-0">
                       <td className="py-2 pr-2">
-                        <Link to={`/payments/${p.id}`} className="font-medium hover:underline">
+                        <Link to={`/account/customer-receipts/${p.id}`} className="font-medium hover:underline">
                           {p.number}
                         </Link>
                         {p.kind === 'refund' && <span className="ml-2 text-xs text-muted-foreground">refund</span>}

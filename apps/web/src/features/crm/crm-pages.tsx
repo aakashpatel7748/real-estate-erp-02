@@ -330,12 +330,12 @@ function LeadDrawer({ leadId, onClose }: { leadId: string | null; onClose: () =>
                 {l.customerId ? (
                   <div className="flex gap-2">
                     <Button variant="outline" asChild>
-                      <Link to={`/customers/${l.customerId.id}`}>Open customer</Link>
+                      <Link to={`/post-sales/customers/${l.customerId.id}`}>Open customer</Link>
                     </Button>
                     {can('bookings.create') && (
                       <Button
                         onClick={() =>
-                          navigate(`/bookings/new?customer=${l.customerId!.id}${l.projectId ? `&project=${l.projectId.id}` : ''}`)
+                          navigate(`/post-sales/bookings/new?customer=${l.customerId!.id}${l.projectId ? `&project=${l.projectId.id}` : ''}`)
                         }
                       >
                         New booking

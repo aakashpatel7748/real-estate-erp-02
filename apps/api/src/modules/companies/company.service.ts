@@ -38,7 +38,12 @@ export async function createCompanyWithDefaults(input: { name: string; ownerUser
   );
 
   await Account.create(
-    SYSTEM_ACCOUNTS.map((a) => ({ companyId, ...a, isBank: a.systemKey === 'bank' })),
+    SYSTEM_ACCOUNTS.map((a) => ({
+      companyId,
+      ...a,
+      isBank: a.systemKey === 'bank',
+      cashBankKind: a.systemKey === 'bank' ? 'bank' : a.systemKey === 'cash' ? 'cash' : undefined,
+    })),
     { session, ordered: true },
   );
 

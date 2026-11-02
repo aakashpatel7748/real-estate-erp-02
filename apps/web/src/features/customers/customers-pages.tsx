@@ -312,10 +312,10 @@ export function CustomersPage() {
         onPageSizeChange={lp.setPageSize}
         sort={lp.sort}
         onSortChange={lp.setSort}
-        onRowClick={(c) => navigate(`/customers/${c.id}`)}
+        onRowClick={(c) => navigate(`/post-sales/customers/${c.id}`)}
         empty={<EmptyState title="No customers found" />}
       />
-      <CustomerFormSheet open={creating} onOpenChange={setCreating} onCreated={(c) => navigate(`/customers/${c.id}`)} />
+      <CustomerFormSheet open={creating} onOpenChange={setCreating} onCreated={(c) => navigate(`/post-sales/customers/${c.id}`)} />
     </>
   );
 }
@@ -408,7 +408,7 @@ export function CustomerDetailPage() {
   return (
     <>
       <PageHeader
-        breadcrumbs={[{ label: 'Customers', to: '/customers' }, { label: c.name }]}
+        breadcrumbs={[{ label: 'Customers', to: '/post-sales/customers' }, { label: c.name }]}
         title={c.name}
         description={`${c.customerCode} · ${c.phone}`}
         actions={
@@ -419,7 +419,7 @@ export function CustomerDetailPage() {
               </Button>
             </Can>
             <Can permission="bookings.create">
-              <Button onClick={() => navigate(`/bookings/new?customer=${c.id}`)}>
+              <Button onClick={() => navigate(`/post-sales/bookings/new?customer=${c.id}`)}>
                 <BookOpenCheck /> New booking
               </Button>
             </Can>
@@ -483,7 +483,7 @@ export function CustomerDetailPage() {
               <ul className="divide-y">
                 {c.bookings.map((b) => (
                   <li key={b.id}>
-                    <Link to={`/bookings/${b.id}`} className="flex items-center justify-between gap-3 px-5 py-3 hover:bg-muted/50">
+                    <Link to={`/post-sales/bookings/${b.id}`} className="flex items-center justify-between gap-3 px-5 py-3 hover:bg-muted/50">
                       <div>
                         <p className="font-medium">{b.bookingNumber}</p>
                         <p className="text-xs text-muted-foreground">

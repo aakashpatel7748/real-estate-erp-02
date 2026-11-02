@@ -20,6 +20,25 @@ import { expensesRouter, vendorsRouter, workOrdersRouter } from './modules/const
 import { crmRouter } from './modules/crm/crm.routes';
 import { documentsRouter, filesRouter } from './modules/documents/documents.routes';
 import { landRouter } from './modules/land/land.routes';
+import {
+  chargesRouter,
+  consultantsRouter,
+  financersRouter,
+  parkingRouter,
+  partiesRouter,
+  rateIndexesRouter,
+  structureRouter,
+} from './modules/masters/masters.routes';
+import { adjustmentsRouter, cashBankRouter, gstRouter, pdcRouter, vendorPaymentsRouter } from './modules/finance/finance.routes';
+import {
+  inboundRouter,
+  integrationsRouter,
+  leadSettingsRouter,
+  quotationsRouter,
+  salesDashboardRouter,
+  whatsappTemplatesRouter,
+} from './modules/presales/presales.routes';
+import { postSalesRouter } from './modules/postsales/postsales.routes';
 import { logger } from './utils/logger';
 
 export function createApp() {
@@ -61,6 +80,8 @@ export function createApp() {
   v1.use('/auth', authRouter);
   // Signed, expiring file links (local storage driver); the token itself is the authorization.
   v1.use('/files', filesRouter);
+  // Inbound leads from portals / ad platforms / website forms; the secret token in the URL authorizes.
+  v1.use('/inbound/leads', inboundRouter);
 
   // Everything below requires an authenticated session and a verified tenant context.
   const tenantScoped = Router();
@@ -78,6 +99,28 @@ export function createApp() {
   tenantScoped.use('/bookings', bookingsRouter);
   tenantScoped.use('/payments', paymentsRouter);
   tenantScoped.use('/accounting', accountingRouter);
+  // Administration & masters
+  tenantScoped.use('/structure', structureRouter);
+  tenantScoped.use('/rate-indexes', rateIndexesRouter);
+  tenantScoped.use('/parties', partiesRouter);
+  tenantScoped.use('/financers', financersRouter);
+  tenantScoped.use('/consultants', consultantsRouter);
+  tenantScoped.use('/charges', chargesRouter);
+  tenantScoped.use('/parking', parkingRouter);
+  // Pre sales
+  tenantScoped.use('/sales-dashboard', salesDashboardRouter);
+  tenantScoped.use('/lead-settings', leadSettingsRouter);
+  tenantScoped.use('/whatsapp-templates', whatsappTemplatesRouter);
+  tenantScoped.use('/integrations', integrationsRouter);
+  tenantScoped.use('/quotations', quotationsRouter);
+  // Post sales
+  tenantScoped.use('/post-sales', postSalesRouter);
+  // Account
+  tenantScoped.use('/cash-bank-accounts', cashBankRouter);
+  tenantScoped.use('/pdcs', pdcRouter);
+  tenantScoped.use('/vendor-payments', vendorPaymentsRouter);
+  tenantScoped.use('/ledger-adjustments', adjustmentsRouter);
+  tenantScoped.use('/gst-vouchers', gstRouter);
   tenantScoped.use('/', reportsRouter);
   tenantScoped.use('/', adminRouter);
   v1.use(tenantScoped);

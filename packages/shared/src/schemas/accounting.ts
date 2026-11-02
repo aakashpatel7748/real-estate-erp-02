@@ -1,6 +1,6 @@
 import { z } from 'zod';
 import { ACCOUNT_TYPES } from '../constants/status';
-import { isoDate, listQuerySchema, objectId, optional, paise, requiredText, trimmed } from './common';
+import { isoDate, listQuerySchema, objectId, optional, paise, requiredText, trimmed, patchSchema } from './common';
 
 export const accountSchema = z.object({
   code: z
@@ -14,7 +14,7 @@ export const accountSchema = z.object({
   isBank: z.boolean().default(false),
 });
 export type AccountInput = z.infer<typeof accountSchema>;
-export const accountUpdateSchema = accountSchema.pick({ name: true, description: true }).partial().extend({
+export const accountUpdateSchema = patchSchema(accountSchema.pick({ name: true, description: true })).extend({
   isActive: z.boolean().optional(),
 });
 

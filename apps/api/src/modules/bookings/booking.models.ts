@@ -1,5 +1,5 @@
 import { model, Schema, type InferSchemaType } from 'mongoose';
-import { BOOKING_STATUSES, INSTALLMENT_STATUSES } from '@erp/shared';
+import { BOOKING_STATUSES, INSTALLMENT_STATUSES, LOAN_STATUSES } from '@erp/shared';
 import { baseOptions, tenantRef, withTenant } from '../../db/base';
 
 const paymentPlanSchema = withTenant(
@@ -60,6 +60,24 @@ const bookingSchema = withTenant(
       /** Money owed back to the customer after cancellation (paid minus charges minus refunds). */
       refundablePaise: { type: Number, required: true, default: 0 },
       salesJournalEntryId: { type: Schema.Types.ObjectId, ref: 'JournalEntry' },
+      /** Net effect of ledger adjustments (debit notes minus credit notes), included in netAmountPaise. */
+      adjustmentsPaise: { type: Number, default: 0 },
+      quotationId: { type: Schema.Types.ObjectId, ref: 'Quotation' },
+      allotment: {
+        issuedAt: Date,
+        issuedBy: { type: Schema.Types.ObjectId, ref: 'User' },
+        deliveredVia: String,
+      },
+      /** Home loan, if the buyer is financing through a bank / HFC. */
+      loan: {
+        financerId: { type: Schema.Types.ObjectId, ref: 'Financer' },
+        status: { type: String, enum: LOAN_STATUSES },
+        loanAccountNo: String,
+        sanctionedPaise: Number,
+        disbursedPaise: Number,
+        sanctionDate: Date,
+        remarks: String,
+      },
       remarks: String,
       createdBy: { type: Schema.Types.ObjectId, ref: 'User', required: true },
     },
@@ -69,6 +87,7 @@ const bookingSchema = withTenant(
 bookingSchema.index({ companyId: 1, bookingNumber: 1 }, { unique: true });
 bookingSchema.index({ companyId: 1, projectId: 1, status: 1, createdAt: -1 });
 bookingSchema.index({ companyId: 1, customerId: 1 });
+bookingSchema.index({ companyId: 1, 'loan.financerId': 1 }, { sparse: true });
 bookingSchema.index({ status: 1, reservedUntil: 1 });
 export type BookingDoc = InferSchemaType<typeof bookingSchema>;
 export const Booking = model('Booking', bookingSchema);

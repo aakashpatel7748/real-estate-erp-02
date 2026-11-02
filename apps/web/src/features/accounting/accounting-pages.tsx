@@ -187,7 +187,7 @@ function JournalTab() {
         onPageChange={lp.setPage}
         pageSize={lp.pageSize}
         onPageSizeChange={lp.setPageSize}
-        onRowClick={(e) => navigate(`/accounting/entries/${e.id}`)}
+        onRowClick={(e) => navigate(`/account/journal-voucher/entries/${e.id}`)}
         empty={<EmptyState title="No entries" />}
       />
       <VoucherSheet open={creating} onOpenChange={setCreating} />
@@ -382,14 +382,14 @@ export function JournalEntryPage() {
   const canReverse = e.source?.type === 'manual' && !e.reversedBy && !e.reversalOf;
   const sourceLink =
     e.source?.type === 'booking'
-      ? `/bookings/${e.source.id}`
+      ? `/post-sales/bookings/${e.source.id}`
       : e.source?.type === 'payment' || e.source?.type === 'refund'
-        ? `/payments/${e.source.id}`
+        ? `/account/customer-receipts/${e.source.id}`
         : null;
   return (
     <>
       <PageHeader
-        breadcrumbs={[{ label: 'Accounting', to: '/accounting' }, { label: e.entryNumber }]}
+        breadcrumbs={[{ label: 'Journal voucher', to: '/account/journal-voucher' }, { label: e.entryNumber }]}
         title={e.entryNumber}
         description={`${titleCase(e.voucherType)} · ${formatDate(e.date.slice(0, 10))} · posted ${formatDateTime(e.createdAt)}${e.postedBy ? ` by ${e.postedBy.name}` : ''}`}
         actions={
@@ -408,7 +408,7 @@ export function JournalEntryPage() {
           {e.reversedBy && (
             <p className="text-sm text-destructive">
               Reversed ({e.reversalReason}).{' '}
-              <Link to={`/accounting/entries/${e.reversedBy}`} className="underline">
+              <Link to={`/account/journal-voucher/entries/${e.reversedBy}`} className="underline">
                 View reversal
               </Link>
             </p>
@@ -416,7 +416,7 @@ export function JournalEntryPage() {
           {e.reversalOf && (
             <p className="text-sm text-muted-foreground">
               Reversal of{' '}
-              <Link to={`/accounting/entries/${e.reversalOf}`} className="underline">
+              <Link to={`/account/journal-voucher/entries/${e.reversalOf}`} className="underline">
                 original entry
               </Link>
             </p>
@@ -542,7 +542,7 @@ function AccountsTab() {
                       <button
                         type="button"
                         className="text-left hover:underline cursor-pointer"
-                        onClick={() => navigate(`/accounting?tab=ledger&account=${a.id}`)}
+                        onClick={() => navigate(`/account/journal-voucher?tab=ledger&account=${a.id}`)}
                       >
                         <span className="text-muted-foreground">{a.code}</span> {a.name}
                         {a.systemKey && <span className="ml-2 text-xs text-muted-foreground">system</span>}
@@ -870,7 +870,7 @@ function LedgerTab() {
                 <tr key={`${e.id}-${i}`} className="border-b last:border-0">
                   <td className="py-2 pr-3 whitespace-nowrap">{formatDate(e.date.slice(0, 10))}</td>
                   <td className="py-2 pr-3 whitespace-nowrap">
-                    <Link to={`/accounting/entries/${e.id}`} className="text-primary hover:underline">
+                    <Link to={`/account/journal-voucher/entries/${e.id}`} className="text-primary hover:underline">
                       {e.entryNumber}
                     </Link>
                   </td>

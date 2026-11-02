@@ -17,6 +17,17 @@ const companySchema = new Schema(
       reservationHoldHours: { type: Number, default: 72, min: 1 },
       receiptPrefix: { type: String, default: 'RCPT' },
       bookingPrefix: { type: String, default: 'BKG' },
+      quotationValidityDays: { type: Number, default: 15 },
+      demandLeadDays: { type: Number, default: 15 },
+      registryRequiresFullPayment: { type: Boolean, default: true },
+      possessionRequiresFullPayment: { type: Boolean, default: true },
+      lateInterestBpPerMonth: { type: Number, default: 150 },
+    },
+    /** Lead sources, stage labels and lost reasons (Pre Sales → Lead Stages & Sources). */
+    leadSettings: {
+      sources: [{ _id: false, key: String, label: String, active: { type: Boolean, default: true } }],
+      stageLabels: { type: Schema.Types.Mixed },
+      lostReasons: [String],
     },
     isActive: { type: Boolean, default: true },
     createdBy: { type: Schema.Types.ObjectId, ref: 'User' },

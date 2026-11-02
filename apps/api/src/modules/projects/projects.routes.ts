@@ -21,8 +21,7 @@ import {
   type PhaseInput,
   type PlotInput,
   type PlotStatus,
-  type ProjectInput,
-} from '@erp/shared';
+  type ProjectInput, patchSchema } from '@erp/shared';
 import { authorize } from '../../middleware/auth';
 import { body, params, query, validate } from '../../middleware/validate';
 import { created, ok } from '../../utils/http';
@@ -71,7 +70,7 @@ projectsRouter.post('/:id/phases', authorize('projects.update'), validate({ para
 projectsRouter.patch(
   '/:id/phases/:phaseId',
   authorize('projects.update'),
-  validate({ params: pidPhase, body: phaseSchema.partial() }),
+  validate({ params: pidPhase, body: patchSchema(phaseSchema) }),
   async (req, res) => {
     const p = params<P>(req);
     ok(res, await projects.updatePhase(getCtx(req), p.id, p.phaseId, body<Partial<PhaseInput>>(req)));
@@ -88,7 +87,7 @@ projectsRouter.post('/:id/blocks', authorize('projects.update'), validate({ para
 projectsRouter.patch(
   '/:id/blocks/:blockId',
   authorize('projects.update'),
-  validate({ params: pidBlock, body: blockSchema.partial() }),
+  validate({ params: pidBlock, body: patchSchema(blockSchema) }),
   async (req, res) => {
     const p = params<P>(req);
     ok(res, await projects.updateBlock(getCtx(req), p.id, p.blockId, body<Partial<BlockInput>>(req)));

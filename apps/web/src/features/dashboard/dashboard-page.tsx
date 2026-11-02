@@ -117,7 +117,7 @@ export function DashboardPage() {
             description="Create a project, add plots in bulk and draw them on the layout map. Bookings and collections will appear here automatically."
             action={
               <Button asChild>
-                <Link to="/projects">Go to projects</Link>
+                <Link to="/administration/projects">Go to projects</Link>
               </Button>
             }
           />
@@ -181,7 +181,7 @@ export function DashboardPage() {
       {d.operations && (
         <div className="mt-4 grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
           {d.operations.leads && (
-            <Link to="/crm?view=list&followUp=due" className="rounded-xl focus-visible:outline-2 focus-visible:outline-ring">
+            <Link to="/pre-sales/leads?view=list&followUp=due" className="rounded-xl focus-visible:outline-2 focus-visible:outline-ring">
               <StatCard
                 label="Leads"
                 value={`${d.operations.leads.open} open`}
@@ -192,7 +192,7 @@ export function DashboardPage() {
             </Link>
           )}
           {d.operations.land && (
-            <Link to="/land" className="rounded-xl focus-visible:outline-2 focus-visible:outline-ring">
+            <Link to="/master/land-owners-partners/land" className="rounded-xl focus-visible:outline-2 focus-visible:outline-ring">
               <StatCard
                 label="Land acquisition"
                 value={formatINRCompact(d.operations.land.paidPaise)}
@@ -202,7 +202,7 @@ export function DashboardPage() {
             </Link>
           )}
           {d.operations.construction && (
-            <Link to="/work-orders" className="rounded-xl focus-visible:outline-2 focus-visible:outline-ring">
+            <Link to="/master/vendors-contractors/work-orders" className="rounded-xl focus-visible:outline-2 focus-visible:outline-ring">
               <StatCard
                 label="Development works"
                 value={formatINRCompact(d.operations.construction.billedPaise)}
@@ -308,7 +308,7 @@ export function DashboardPage() {
                   {d.collections.upcoming.map((i) => (
                     <li key={i.id} className="flex items-center justify-between gap-3 py-2.5">
                       <div className="min-w-0">
-                        <Link to={`/bookings/${i.bookingId?.id}`} className="block truncate text-sm font-medium hover:underline">
+                        <Link to={`/post-sales/bookings/${i.bookingId?.id}`} className="block truncate text-sm font-medium hover:underline">
                           {i.customerId?.name} · {i.bookingId?.bookingNumber}
                         </Link>
                         <p className="text-xs text-muted-foreground">
@@ -336,7 +336,7 @@ export function DashboardPage() {
                   {d.sales.recent.map((b) => (
                     <li key={b.id} className="flex items-center justify-between gap-3 py-2.5">
                       <div className="min-w-0">
-                        <Link to={`/bookings/${b.id}`} className="block truncate text-sm font-medium hover:underline">
+                        <Link to={`/post-sales/bookings/${b.id}`} className="block truncate text-sm font-medium hover:underline">
                           {b.bookingNumber}
                         </Link>
                         <p className="text-xs text-muted-foreground">

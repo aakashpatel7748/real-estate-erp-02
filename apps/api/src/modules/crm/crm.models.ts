@@ -1,5 +1,5 @@
 import { model, Schema } from 'mongoose';
-import { LEAD_SOURCES, LEAD_STATUSES } from '@erp/shared';
+import { LEAD_STATUSES } from '@erp/shared';
 import { baseOptions, tenantRef, withTenant } from '../../db/base';
 
 /** CRM lead (Phase 2 module). */
@@ -11,7 +11,8 @@ const leadSchema = withTenant(
       name: { type: String, required: true, trim: true },
       phone: { type: String, required: true },
       email: String,
-      source: { type: String, enum: LEAD_SOURCES, default: 'other' },
+      /** Key from the company's configurable lead sources (see lead-settings). */
+      source: { type: String, default: 'other', maxlength: 40 },
       brokerId: { type: Schema.Types.ObjectId, ref: 'Broker' },
       status: { type: String, enum: LEAD_STATUSES, default: 'new', required: true },
       budgetMinPaise: Number,

@@ -58,6 +58,15 @@ export const companyUpdateSchema = z.object({
         .trim()
         .regex(/^[A-Z0-9-]{1,10}$/)
         .optional(),
+      /** Quotations expire this many days after they are made. */
+      quotationValidityDays: z.number().int().min(1).max(365).optional(),
+      /** Demand letters include installments falling due within this many days. */
+      demandLeadDays: z.number().int().min(0).max(90).optional(),
+      /** Block sale-deed registry / possession while dues are outstanding (an override with a remark is still possible). */
+      registryRequiresFullPayment: z.boolean().optional(),
+      possessionRequiresFullPayment: z.boolean().optional(),
+      /** Interest on overdue installments, in basis points per month, suggested on the dues screen. */
+      lateInterestBpPerMonth: z.number().int().min(0).max(1000).optional(),
     })
     .optional(),
 });

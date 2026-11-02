@@ -3,36 +3,20 @@ import { Link, NavLink, Outlet, useLocation, useNavigate } from 'react-router-do
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import {
   Bell,
-  Handshake,
-  HardHat,
-  MapPinned,
-  Receipt,
-  Target,
-  Truck,
-  BookOpenCheck,
   Building2,
-  CalendarClock,
+  ChevronDown,
   ChevronsLeft,
   ChevronsRight,
-  FolderKanban,
-  Grid3x3,
-  Landmark,
   LayoutDashboard,
   LogOut,
-  Map,
   Menu,
   Moon,
-  ReceiptIndianRupee,
-  ScrollText,
   Search,
   Shield,
-  ShieldCheck,
   Sun,
-  UserCog,
-  Users,
   X,
 } from 'lucide-react';
-import type { Permission } from '@erp/shared';
+import { activeNavItem, sidebarItems } from './nav';
 import { api } from '@/lib/api';
 import { cn, initials } from '@/lib/utils';
 import { formatDateTime } from '@/lib/format';
@@ -51,62 +35,6 @@ import {
   DropdownMenuTrigger,
 } from '@/components/ui/overlays';
 
-interface NavItem {
-  to: string;
-  label: string;
-  icon: React.ComponentType<{ className?: string }>;
-  permission: Permission;
-  end?: boolean;
-}
-
-const NAV: { section: string; items: NavItem[] }[] = [
-  {
-    section: 'Overview',
-    items: [{ to: '/', label: 'Dashboard', icon: LayoutDashboard, permission: 'dashboard.read', end: true }],
-  },
-  {
-    section: 'Projects',
-    items: [
-      { to: '/projects', label: 'Projects', icon: FolderKanban, permission: 'projects.read' },
-      { to: '/inventory', label: 'Plot inventory', icon: Grid3x3, permission: 'inventory.read' },
-      { to: '/map', label: 'Plot map', icon: Map, permission: 'map.read' },
-      { to: '/land', label: 'Land acquisition', icon: MapPinned, permission: 'land.read' },
-    ],
-  },
-  {
-    section: 'Sales',
-    items: [
-      { to: '/crm', label: 'Leads', icon: Target, permission: 'crm.read' },
-      { to: '/customers', label: 'Customers', icon: Users, permission: 'customers.read' },
-      { to: '/bookings', label: 'Bookings', icon: BookOpenCheck, permission: 'bookings.read' },
-      { to: '/payment-plans', label: 'Payment plans', icon: CalendarClock, permission: 'paymentPlans.read' },
-      { to: '/payments', label: 'Receipts & refunds', icon: ReceiptIndianRupee, permission: 'payments.read' },
-      { to: '/brokers', label: 'Brokers', icon: Handshake, permission: 'brokers.read' },
-    ],
-  },
-  {
-    section: 'Construction',
-    items: [
-      { to: '/work-orders', label: 'Work orders', icon: HardHat, permission: 'construction.read' },
-      { to: '/vendors', label: 'Vendors', icon: Truck, permission: 'vendors.read' },
-      { to: '/expenses', label: 'Expenses & bills', icon: Receipt, permission: 'expenses.read' },
-    ],
-  },
-  {
-    section: 'Finance',
-    items: [{ to: '/accounting', label: 'Accounting', icon: Landmark, permission: 'accounting.read' }],
-  },
-  {
-    section: 'Administration',
-    items: [
-      { to: '/admin/users', label: 'Users', icon: UserCog, permission: 'users.read' },
-      { to: '/admin/roles', label: 'Roles & permissions', icon: ShieldCheck, permission: 'roles.read' },
-      { to: '/admin/audit', label: 'Audit log', icon: ScrollText, permission: 'audit.read' },
-      { to: '/admin/company', label: 'Company settings', icon: Building2, permission: 'company.read' },
-    ],
-  },
-];
-
 function readPref(key: string, fallback: string) {
   try {
     return localStorage.getItem(key) ?? fallback;
@@ -124,52 +52,110 @@ function writePref(key: string, value: string) {
 
 function Sidebar({ collapsed, onNavigate }: { collapsed: boolean; onNavigate?: () => void }) {
   const { can } = useAuth();
+  const { pathname } = useLocation();
+  const active = activeNavItem(pathname);
+  const [open, setOpen] = React.useState<Record<string, boolean>>(() => {
+    try {
+      return JSON.parse(readPref('erp.nav.open', '{}')) as Record<string, boolean>;
+    } catch {
+      return {};
+    }
+  });
+  // The section holding the current page is always expanded.
+  const isOpen = (id: string) => open[id] ?? active?.section.id === id;
+  const toggle = (id: string) =>
+    setOpen((o) => {
+      const next = { ...o, [id]: !isOpen(id) };
+      writePref('erp.nav.open', JSON.stringify(next));
+      return next;
+    });
+  const linkClass = (isActive: boolean) =>
+    cn(
+      'flex items-center gap-3 rounded-md px-3 py-2 text-sm text-sidebar-foreground/85 transition-colors hover:bg-sidebar-active hover:text-white',
+      isActive && 'bg-sidebar-active font-medium text-white',
+      collapsed && 'justify-center px-2',
+    );
+
   return (
     <nav aria-label="Main" className="flex-1 overflow-y-auto px-3 py-4">
-      {NAV.map((group) => {
-        const items = group.items.filter((i) => can(i.permission));
-        if (!items.length) return null;
-        return (
-          <div key={group.section} className="mb-5">
-            {!collapsed && (
-              <p className="mb-1.5 px-3 text-[11px] font-semibold uppercase tracking-wider text-sidebar-muted/80">{group.section}</p>
-            )}
-            <ul className="space-y-0.5">
-              {items.map((item) => {
-                const link = (
-                  <NavLink
-                    to={item.to}
-                    end={item.end}
-                    onClick={onNavigate}
-                    className={({ isActive }) =>
-                      cn(
-                        'flex items-center gap-3 rounded-md px-3 py-2 text-sm text-sidebar-foreground/85 transition-colors hover:bg-sidebar-active hover:text-white',
-                        isActive && 'bg-sidebar-active font-medium text-white',
-                        collapsed && 'justify-center px-2',
-                      )
-                    }
-                  >
-                    <item.icon className="size-[18px] shrink-0" />
-                    {!collapsed && <span className="truncate">{item.label}</span>}
-                    {collapsed && <span className="sr-only">{item.label}</span>}
-                  </NavLink>
-                );
-                return (
-                  <li key={item.to}>
-                    {collapsed ? (
-                      <Tooltip content={item.label} side="right">
-                        {link}
-                      </Tooltip>
-                    ) : (
-                      link
-                    )}
-                  </li>
-                );
-              })}
-            </ul>
-          </div>
-        );
-      })}
+      {can('dashboard.read') && (
+        <div className="mb-3">
+          {collapsed ? (
+            <Tooltip content="Dashboard" side="right">
+              <NavLink to="/" end onClick={onNavigate} className={({ isActive }) => linkClass(isActive)}>
+                <LayoutDashboard className="size-[18px] shrink-0" />
+                <span className="sr-only">Dashboard</span>
+              </NavLink>
+            </Tooltip>
+          ) : (
+            <NavLink to="/" end onClick={onNavigate} className={({ isActive }) => linkClass(isActive)}>
+              <LayoutDashboard className="size-[18px] shrink-0" />
+              <span>Dashboard</span>
+            </NavLink>
+          )}
+        </div>
+      )}
+      <ul className="space-y-1">
+        {sidebarItems.map((section) => {
+          const items = section.children.filter((c) => can(c.permission));
+          if (!items.length) return null;
+          const expanded = collapsed ? false : isOpen(section.id);
+          const sectionActive = active?.section.id === section.id;
+          const Icon = section.icon;
+          if (collapsed) {
+            // Collapsed rail: the section icon opens its first page; the tooltip lists the section.
+            return (
+              <li key={section.id}>
+                <Tooltip content={section.title} side="right">
+                  <Link to={items[0]!.path} onClick={onNavigate} className={linkClass(sectionActive)} aria-label={section.title}>
+                    <Icon className="size-[18px] shrink-0" />
+                  </Link>
+                </Tooltip>
+              </li>
+            );
+          }
+          return (
+            <li key={section.id}>
+              <button
+                type="button"
+                onClick={() => toggle(section.id)}
+                aria-expanded={expanded}
+                aria-controls={`nav-${section.id}`}
+                className={cn(
+                  'flex w-full items-center gap-3 rounded-md px-3 py-2 text-left text-sm font-medium text-sidebar-foreground/90 transition-colors hover:bg-sidebar-active hover:text-white cursor-pointer',
+                  sectionActive && 'text-white',
+                )}
+              >
+                <Icon className="size-[18px] shrink-0" />
+                <span className="flex-1 truncate">{section.title}</span>
+                <ChevronDown className={cn('size-4 shrink-0 transition-transform', expanded && 'rotate-180')} aria-hidden />
+              </button>
+              {expanded && (
+                <ul id={`nav-${section.id}`} className="mb-2 ml-[1.15rem] mt-0.5 space-y-0.5 border-l border-white/10 pl-3">
+                  {items.map((item) => {
+                    const isActive = active?.item.id === item.id;
+                    return (
+                      <li key={item.id}>
+                        <Link
+                          to={item.path}
+                          onClick={onNavigate}
+                          aria-current={isActive ? 'page' : undefined}
+                          className={cn(
+                            'block rounded-md px-2.5 py-1.5 text-[13px] leading-snug text-sidebar-foreground/75 transition-colors hover:bg-sidebar-active hover:text-white',
+                            isActive && 'bg-sidebar-active font-medium text-white',
+                          )}
+                        >
+                          {item.title}
+                        </Link>
+                      </li>
+                    );
+                  })}
+                </ul>
+              )}
+            </li>
+          );
+        })}
+      </ul>
     </nav>
   );
 }
@@ -216,11 +202,11 @@ function GlobalSearch() {
     ? [
         {
           label: 'Bookings',
-          items: data.bookings.map((b) => ({ key: b.id, title: b.bookingNumber, sub: b.status, to: `/bookings/${b.id}` })),
+          items: data.bookings.map((b) => ({ key: b.id, title: b.bookingNumber, sub: b.status, to: `/post-sales/bookings/${b.id}` })),
         },
         {
           label: 'Customers',
-          items: data.customers.map((c) => ({ key: c.id, title: c.name, sub: `${c.customerCode} · ${c.phone}`, to: `/customers/${c.id}` })),
+          items: data.customers.map((c) => ({ key: c.id, title: c.name, sub: `${c.customerCode} · ${c.phone}`, to: `/post-sales/customers/${c.id}` })),
         },
         {
           label: 'Plots',
@@ -228,17 +214,17 @@ function GlobalSearch() {
             key: p.id,
             title: `Plot ${p.plotNumber}`,
             sub: p.status,
-            to: `/inventory?project=${p.projectId}&plot=${p.id}`,
+            to: `/master/units-inventory?project=${p.projectId}&plot=${p.id}`,
           })),
         },
-        { label: 'Projects', items: data.projects.map((p) => ({ key: p.id, title: p.name, sub: p.code, to: `/projects/${p.id}` })) },
+        { label: 'Projects', items: data.projects.map((p) => ({ key: p.id, title: p.name, sub: p.code, to: `/administration/projects/${p.id}` })) },
         {
           label: 'Leads',
-          items: (data.leads ?? []).map((l) => ({ key: l.id, title: l.name, sub: `${l.phone} · ${l.status}`, to: `/crm?lead=${l.id}` })),
+          items: (data.leads ?? []).map((l) => ({ key: l.id, title: l.name, sub: `${l.phone} · ${l.status}`, to: `/pre-sales/leads?lead=${l.id}` })),
         },
         {
           label: 'Vendors',
-          items: (data.vendors ?? []).map((v) => ({ key: v.id, title: v.name, sub: v.category, to: `/vendors/${v.id}` })),
+          items: (data.vendors ?? []).map((v) => ({ key: v.id, title: v.name, sub: v.category, to: `/master/vendors-contractors/${v.id}` })),
         },
         {
           label: 'Land',
@@ -246,7 +232,7 @@ function GlobalSearch() {
             key: l.id,
             title: `Khasra ${l.khasraNumber}`,
             sub: `${l.village} · ${l.status}`,
-            to: `/land/${l.id}`,
+            to: `/master/land-owners-partners/land/${l.id}`,
           })),
         },
       ].filter((g) => g.items.length)
@@ -429,7 +415,7 @@ function UserMenu({ dark, toggleDark }: { dark: boolean; toggleDark: () => void 
           <span className="block truncate">{context.user.email}</span>
         </DropdownMenuLabel>
         <DropdownMenuSeparator />
-        <DropdownMenuItem onSelect={() => navigate('/account')}>
+        <DropdownMenuItem onSelect={() => navigate('/profile')}>
           <Shield /> Account & sessions
         </DropdownMenuItem>
         <DropdownMenuItem onSelect={toggleDark}>

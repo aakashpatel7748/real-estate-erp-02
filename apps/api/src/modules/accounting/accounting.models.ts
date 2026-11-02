@@ -12,6 +12,16 @@ const accountSchema = withTenant(
       parentId: { type: Schema.Types.ObjectId, ref: 'Account' },
       systemKey: String,
       isBank: { type: Boolean, default: false },
+      /** Bank / cash account details (Administration → Bank & Cash Accounts). */
+      cashBankKind: { type: String, enum: ['bank', 'cash'] },
+      bankDetails: {
+        bankName: String,
+        accountNumber: String,
+        ifsc: String,
+        branch: String,
+        accountType: String,
+        isReraAccount: Boolean,
+      },
       isActive: { type: Boolean, default: true },
       description: String,
     },

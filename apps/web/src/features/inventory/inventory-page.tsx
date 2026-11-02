@@ -46,7 +46,7 @@ export function ProjectPicker({ title }: { title: string }) {
             description="Create a project first."
             action={
               <Button asChild>
-                <Link to="/projects">Go to projects</Link>
+                <Link to="/administration/projects">Go to projects</Link>
               </Button>
             }
           />
@@ -264,8 +264,8 @@ export function InventoryPage() {
     <>
       <PageHeader
         breadcrumbs={[
-          { label: 'Projects', to: '/projects' },
-          { label: summary?.name ?? 'Project', to: `/projects/${projectId}` },
+          { label: 'Projects', to: '/administration/projects' },
+          { label: summary?.name ?? 'Project', to: `/administration/projects/${projectId}` },
           { label: 'Inventory' },
         ]}
         title="Plot inventory"

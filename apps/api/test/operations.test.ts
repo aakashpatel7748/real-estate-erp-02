@@ -104,7 +104,7 @@ describe('CRM', () => {
     await runFollowUpReminders();
     await runFollowUpReminders();
     const notes = (await http.get('/notifications').expect(200)).body.data.items as { title: string; link: string }[];
-    expect(notes.filter((n) => n.link === `/crm?lead=${lead.id}`)).toHaveLength(1);
+    expect(notes.filter((n) => n.link === `/pre-sales/leads?lead=${lead.id}`)).toHaveLength(1);
   });
 });
 

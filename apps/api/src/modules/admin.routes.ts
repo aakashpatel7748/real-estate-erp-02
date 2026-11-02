@@ -16,8 +16,7 @@ import {
   type InviteUserInput,
   type ListQuery,
   type RoleInput,
-  type UpdateMembershipInput,
-} from '@erp/shared';
+  type UpdateMembershipInput, patchSchema } from '@erp/shared';
 import { authorize } from '../middleware/auth';
 import { body, params, query, validate } from '../middleware/validate';
 import { created, escapeRegex, ok, pageMeta } from '../utils/http';
@@ -74,7 +73,7 @@ adminRouter.get('/roles', authorize('roles.read'), async (req, res) => ok(res, a
 adminRouter.post('/roles', authorize('roles.create'), validate({ body: roleSchema }), async (req, res) =>
   created(res, await roles.createRole(getCtx(req), body<RoleInput>(req))),
 );
-adminRouter.patch('/roles/:id', authorize('roles.update'), validate({ params: idParam, body: roleSchema.partial() }), async (req, res) =>
+adminRouter.patch('/roles/:id', authorize('roles.update'), validate({ params: idParam, body: patchSchema(roleSchema) }), async (req, res) =>
   ok(res, await roles.updateRole(getCtx(req), params<{ id: string }>(req).id, body<Partial<RoleInput>>(req))),
 );
 adminRouter.delete('/roles/:id', authorize('roles.delete'), validate({ params: idParam }), async (req, res) => {

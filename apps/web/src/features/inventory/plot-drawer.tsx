@@ -313,7 +313,7 @@ export function PlotDrawer({
                   </Can>
                 </div>
                 {p.status === 'available' && can('bookings.create') && (
-                  <Button onClick={() => navigate(`/bookings/new?project=${projectId}&plots=${p.id}`)}>
+                  <Button onClick={() => navigate(`/post-sales/bookings/new?project=${projectId}&plots=${p.id}`)}>
                     <BookOpenCheck /> Book this plot
                   </Button>
                 )}
@@ -348,7 +348,7 @@ export function PlotDrawer({
               {p.currentBooking && (
                 <div className="rounded-lg border p-4">
                   <p className="text-xs uppercase tracking-wide text-muted-foreground">Current booking</p>
-                  <Link to={`/bookings/${p.currentBooking.id}`} className="mt-1 block font-medium text-primary hover:underline">
+                  <Link to={`/post-sales/bookings/${p.currentBooking.id}`} className="mt-1 block font-medium text-primary hover:underline">
                     {p.currentBooking.bookingNumber}
                   </Link>
                   <p className="text-sm">

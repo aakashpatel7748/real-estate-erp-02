@@ -30,6 +30,9 @@ import { Plot } from '../plots/plot.models';
 import { recordPlotStatus } from '../plots/plots.service';
 import { Block, Project } from '../projects/project.models';
 import { Booking, BookingItem, Installment, PaymentPlan } from './booking.models';
+import { LedgerAdjustment } from '../finance/finance.models';
+import { Quotation } from '../presales/presales.models';
+import { ParkingSlot } from '../masters/masters.models';
 
 type Actor = Pick<TenantContext, 'companyId' | 'userId' | 'meta'>;
 
@@ -164,6 +167,7 @@ export async function createBooking(ctx: TenantContext, input: CreateBookingInpu
       if (unavailable.length) {
         throw new AppError(409, 'CONFLICT', `Plot ${unavailable.map((p) => p.plotNumber).join(', ')} is no longer available`);
       }
+      const quotationId = input.quotationId ? toObjectId(input.quotationId) : undefined;
 
       const status: BookingStatus = input.mode === 'reserve' ? 'reserved' : 'booked';
       const plotStatus = status === 'reserved' ? 'reserved' : 'booked';
@@ -223,6 +227,7 @@ export async function createBooking(ctx: TenantContext, input: CreateBookingInpu
             chargesTotalPaise: priced.chargesTotalPaise,
             netAmountPaise: priced.netAmountPaise,
             salesJournalEntryId: salesJe._id,
+            quotationId,
             remarks: input.remarks,
             createdBy: ctx.userId,
           },
@@ -269,6 +274,14 @@ export async function createBooking(ctx: TenantContext, input: CreateBookingInpu
         },
         session,
       );
+      if (quotationId) {
+        const converted = await Quotation.updateOne(
+          { companyId: ctx.companyId, _id: quotationId, projectId, status: { $in: ['draft', 'sent', 'accepted'] } },
+          { $set: { status: 'converted', bookingId, customerId: customer._id } },
+          { session },
+        );
+        if (converted.modifiedCount !== 1) throw businessRule('This quotation has already been converted, cancelled or expired');
+      }
       if (status === 'booked') await accrueCommission(ctx, bookingId, session);
       return booking!.toJSON();
     });
@@ -456,6 +469,18 @@ export async function closeBooking(
     const rev = await reverseJournal(actor, booking.salesJournalEntryId, `Booking ${booking.bookingNumber} ${to}`, session, today);
     journalIds.push(rev._id);
   }
+  // Ledger adjustments (credit/debit notes) are part of the receivable: unwind them with the sale.
+  const adjustments = await LedgerAdjustment.find({ companyId: actor.companyId, bookingId: booking._id, status: 'posted' }).session(session).lean();
+  for (const adj of adjustments) {
+    if (!adj.journalEntryId) continue;
+    const rev = await reverseJournal(actor, adj.journalEntryId, `Booking ${booking.bookingNumber} ${to}`, session, today);
+    journalIds.push(rev._id);
+    await LedgerAdjustment.updateOne(
+      { companyId: actor.companyId, _id: adj._id },
+      { $set: { status: 'reversed', reversal: { at: new Date(), by: actor.userId, reason: `Booking ${to}`, journalEntryId: rev._id } } },
+      { session },
+    );
+  }
   if (booking.receivedPaise > 0) {
     const reclass = await postJournal(
       actor,
@@ -485,6 +510,14 @@ export async function closeBooking(
   );
 
   await Installment.updateMany({ companyId: actor.companyId, bookingId: booking._id }, { $set: { status: 'cancelled' } }, { session });
+  await ParkingSlot.updateMany(
+    { companyId: actor.companyId, bookingId: booking._id, status: 'allotted' },
+    {
+      $set: { status: 'available', bookingId: null, customerId: null, allottedAt: null },
+      $push: { history: { action: 'released', bookingId: booking._id, note: `Booking ${to}`, by: actor.userId } },
+    },
+    { session },
+  );
   await cancelCommission(actor, booking._id, `Booking ${booking.bookingNumber} ${to}`, session);
 
   const items = await BookingItem.find({ companyId: actor.companyId, bookingId: booking._id, active: true }).session(session).lean();

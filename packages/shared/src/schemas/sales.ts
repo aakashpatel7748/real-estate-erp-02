@@ -13,8 +13,7 @@ import {
   phone,
   positivePaise,
   requiredText,
-  trimmed,
-} from './common';
+  trimmed, patchSchema } from './common';
 
 export const coApplicantSchema = z.object({
   name: requiredText('Co-applicant name', 120),
@@ -40,7 +39,7 @@ export const customerSchema = z.object({
   notes: trimmed(1000).optional(),
 });
 export type CustomerInput = z.infer<typeof customerSchema>;
-export const customerUpdateSchema = customerSchema.partial();
+export const customerUpdateSchema = patchSchema(customerSchema);
 
 export const bookingChargeSchema = z.object({
   name: requiredText('Charge name', 80),
@@ -64,6 +63,8 @@ export const createBookingSchema = z.object({
     .optional(),
   discountPaise: paise.default(0),
   charges: z.array(bookingChargeSchema).max(10).default([]),
+  /** The saved quotation this booking converts, if any. */
+  quotationId: optional(objectId),
   remarks: trimmed(1000).optional(),
 });
 export type CreateBookingInput = z.infer<typeof createBookingSchema>;

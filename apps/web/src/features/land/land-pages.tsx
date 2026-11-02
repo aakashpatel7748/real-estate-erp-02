@@ -149,7 +149,7 @@ function ParcelSheet({ open, onOpenChange, parcel }: { open: boolean; onOpenChan
       qc.invalidateQueries({ queryKey: ['land'] });
       toast.success(parcel ? 'Parcel updated' : 'Parcel recorded');
       onOpenChange(false);
-      if (!parcel) navigate(`/land/${p.id}`);
+      if (!parcel) navigate(`/master/land-owners-partners/land/${p.id}`);
     },
     onError: (e) => toast.error(errorMessage(e)),
   });
@@ -353,7 +353,7 @@ export function LandPage() {
         onPageSizeChange={lp.setPageSize}
         sort={lp.sort}
         onSortChange={lp.setSort}
-        onRowClick={(p) => navigate(`/land/${p.id}`)}
+        onRowClick={(p) => navigate(`/master/land-owners-partners/land/${p.id}`)}
         empty={<EmptyState icon={MapPinned} title="No land parcels" description="Record parcels as soon as negotiations start." />}
       />
       <ParcelSheet open={creating} onOpenChange={setCreating} />
@@ -421,7 +421,7 @@ export function LandDetailPage() {
     mutationFn: () => api.delete(`/land/${id}`),
     onSuccess: () => {
       refresh();
-      navigate('/land');
+      navigate('/master/land-owners-partners/land');
     },
     onError: (e) => toast.error(errorMessage(e)),
   });
@@ -433,7 +433,7 @@ export function LandDetailPage() {
   return (
     <>
       <PageHeader
-        breadcrumbs={[{ label: 'Land', to: '/land' }, { label: `Khasra ${p.khasraNumber}` }]}
+        breadcrumbs={[{ label: 'Land', to: '/master/land-owners-partners/land' }, { label: `Khasra ${p.khasraNumber}` }]}
         title={
           <span className="flex items-center gap-3">
             Khasra {p.khasraNumber} <StatusBadge status={STATUS_VARIANT[p.status]} label={titleCase(p.status)} />

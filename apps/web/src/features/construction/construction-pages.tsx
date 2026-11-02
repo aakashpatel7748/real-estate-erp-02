@@ -169,7 +169,7 @@ function VendorSheet({ open, onOpenChange, vendor }: { open: boolean; onOpenChan
       qc.invalidateQueries({ queryKey: ['vendors'] });
       toast.success('Vendor saved');
       onOpenChange(false);
-      if (!vendor) navigate(`/vendors/${v.id}`);
+      if (!vendor) navigate(`/master/vendors-contractors/${v.id}`);
     },
     onError: (e) => toast.error(errorMessage(e)),
   });
@@ -288,7 +288,7 @@ export function VendorsPage() {
         onPageChange={lp.setPage}
         sort={lp.sort}
         onSortChange={lp.setSort}
-        onRowClick={(v) => navigate(`/vendors/${v.id}`)}
+        onRowClick={(v) => navigate(`/master/vendors-contractors/${v.id}`)}
         empty={<EmptyState icon={Truck} title="No vendors yet" />}
       />
       <VendorSheet open={creating} onOpenChange={setCreating} />
@@ -336,7 +336,7 @@ export function VendorDetailPage() {
   return (
     <>
       <PageHeader
-        breadcrumbs={[{ label: 'Vendors', to: '/vendors' }, { label: v.name }]}
+        breadcrumbs={[{ label: 'Vendors', to: '/master/vendors-contractors' }, { label: v.name }]}
         title={v.name}
         description={`${titleCase(v.category)}${v.gstin ? ` · GSTIN ${v.gstin}` : ''}${v.phone ? ` · ${v.phone}` : ''}`}
         actions={
@@ -397,7 +397,7 @@ export function VendorDetailPage() {
                     <tr key={`${r.id}-${i}`} className="border-b last:border-0">
                       <td className="py-2 pr-2 whitespace-nowrap">{formatDate(r.date.slice(0, 10))}</td>
                       <td className="py-2 pr-2">
-                        <Link to={`/accounting/entries/${r.id}`} className="text-primary hover:underline">
+                        <Link to={`/account/journal-voucher/entries/${r.id}`} className="text-primary hover:underline">
                           {r.entryNumber}
                         </Link>
                         <span className="block text-xs text-muted-foreground">{r.narration}</span>
@@ -424,7 +424,7 @@ export function VendorDetailPage() {
                 <ul className="divide-y">
                   {v.workOrders.map((w) => (
                     <li key={w.id}>
-                      <Link to={`/work-orders/${w.id}`} className="flex items-center justify-between gap-2 py-2.5 hover:bg-muted/40">
+                      <Link to={`/master/vendors-contractors/work-orders/${w.id}`} className="flex items-center justify-between gap-2 py-2.5 hover:bg-muted/40">
                         <span>
                           <span className="font-medium">{w.number}</span> · {w.title}
                           <span className="block text-xs text-muted-foreground">{w.projectId?.name}</span>
@@ -553,7 +553,7 @@ function WorkOrderSheet({ open, onOpenChange, order }: { open: boolean; onOpenCh
       qc.invalidateQueries({ queryKey: ['work-orders'] });
       toast.success(order ? 'Work order updated' : `Work order ${w.number} created`);
       onOpenChange(false);
-      if (!order) navigate(`/work-orders/${w.id}`);
+      if (!order) navigate(`/master/vendors-contractors/work-orders/${w.id}`);
     },
     onError: (e) => toast.error(errorMessage(e)),
   });
@@ -746,7 +746,7 @@ export function WorkOrdersPage() {
         onPageChange={lp.setPage}
         sort={lp.sort}
         onSortChange={lp.setSort}
-        onRowClick={(w) => navigate(`/work-orders/${w.id}`)}
+        onRowClick={(w) => navigate(`/master/vendors-contractors/work-orders/${w.id}`)}
         empty={<EmptyState icon={HardHat} title="No work orders" />}
       />
       <WorkOrderSheet open={creating} onOpenChange={setCreating} />
@@ -784,7 +784,7 @@ export function WorkOrderDetailPage() {
   return (
     <>
       <PageHeader
-        breadcrumbs={[{ label: 'Work orders', to: '/work-orders' }, { label: w.number }]}
+        breadcrumbs={[{ label: 'Work orders', to: '/master/vendors-contractors/work-orders' }, { label: w.number }]}
         title={
           <span className="flex items-center gap-3">
             {w.number} <StatusBadge status={WO_VARIANT[w.status]} label={titleCase(w.status)} />
@@ -793,7 +793,7 @@ export function WorkOrderDetailPage() {
         description={
           <>
             {w.title} ·{' '}
-            <Link className="hover:underline" to={`/vendors/${w.vendorId?.id}`}>
+            <Link className="hover:underline" to={`/master/vendors-contractors/${w.vendorId?.id}`}>
               {w.vendorId?.name}
             </Link>{' '}
             · {w.projectId?.name}

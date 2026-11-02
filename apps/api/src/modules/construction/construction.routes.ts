@@ -19,8 +19,7 @@ import {
   type VendorInput,
   type VendorPaymentInput,
   type WorkOrderInput,
-  type WorkOrderStatus,
-} from '@erp/shared';
+  type WorkOrderStatus, patchSchema } from '@erp/shared';
 import { authorize } from '../../middleware/auth';
 import { idempotent } from '../../middleware/idempotency';
 import { body, params, query, validate } from '../../middleware/validate';
@@ -46,7 +45,7 @@ vendorsRouter.post('/', authorize('vendors.create'), validate({ body: vendorSche
   created(res, await svc.createVendor(getCtx(req), body<VendorInput>(req))),
 );
 vendorsRouter.get('/:id', authorize('vendors.read'), validate({ params: idParam }), async (req, res) => ok(res, await svc.getVendor(getCtx(req), params<Id>(req).id)));
-vendorsRouter.patch('/:id', authorize('vendors.update'), validate({ params: idParam, body: vendorSchema.partial() }), async (req, res) =>
+vendorsRouter.patch('/:id', authorize('vendors.update'), validate({ params: idParam, body: patchSchema(vendorSchema) }), async (req, res) =>
   ok(res, await svc.updateVendor(getCtx(req), params<Id>(req).id, body<Partial<VendorInput>>(req))),
 );
 vendorsRouter.post('/:id/payments', authorize('vendors.pay'), validate({ params: idParam, body: vendorPaymentSchema }), idempotent, async (req, res) =>

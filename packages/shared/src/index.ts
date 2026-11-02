@@ -12,3 +12,4 @@ export * from './schemas/payment-plans';
 export * from './schemas/accounting';
 export * from './types/api';
 export * from './schemas/operations';
+export * from './schemas/erp';

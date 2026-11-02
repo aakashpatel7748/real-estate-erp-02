@@ -140,6 +140,7 @@ async function main() {
           blockId: idOf(block),
           plotNumber: String(n),
           category: 'residential',
+          unitType: 'plot',
           facing: row % 2 === 0 ? 'north' : 'south',
           areaX100: sqftToAreaX100(corner ? '1500' : '1200'),
           ratePaisePerSqft: 2_200_00,

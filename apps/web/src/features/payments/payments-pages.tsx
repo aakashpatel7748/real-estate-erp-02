@@ -117,7 +117,7 @@ export function PaymentsPage() {
         onPageSizeChange={lp.setPageSize}
         sort={lp.sort}
         onSortChange={lp.setSort}
-        onRowClick={(p) => navigate(`/payments/${p.id}`)}
+        onRowClick={(p) => navigate(`/account/customer-receipts/${p.id}`)}
         empty={<EmptyState title="No payments found" />}
       />
     </>
@@ -151,7 +151,7 @@ export function PaymentDetailPage() {
   return (
     <>
       <PageHeader
-        breadcrumbs={[{ label: 'Receipts & refunds', to: '/payments' }, { label: p.number }]}
+        breadcrumbs={[{ label: 'Receipts & refunds', to: '/account/customer-receipts' }, { label: p.number }]}
         title={
           <span className="flex items-center gap-3">
             {p.number} <StatusBadge status={p.status} />
@@ -181,7 +181,7 @@ export function PaymentDetailPage() {
                 {
                   label: 'Customer',
                   value: p.customerId ? (
-                    <Link className="text-primary hover:underline" to={`/customers/${p.customerId.id}`}>
+                    <Link className="text-primary hover:underline" to={`/post-sales/customers/${p.customerId.id}`}>
                       {p.customerId.name}
                     </Link>
                   ) : (
@@ -191,7 +191,7 @@ export function PaymentDetailPage() {
                 {
                   label: 'Booking',
                   value: p.bookingId ? (
-                    <Link className="text-primary hover:underline" to={`/bookings/${p.bookingId.id}`}>
+                    <Link className="text-primary hover:underline" to={`/post-sales/bookings/${p.bookingId.id}`}>
                       {p.bookingId.bookingNumber}
                     </Link>
                   ) : (

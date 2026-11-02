@@ -183,8 +183,8 @@ export function MapPage() {
     <>
       <PageHeader
         breadcrumbs={[
-          { label: 'Projects', to: '/projects' },
-          { label: summary?.name ?? 'Project', to: `/projects/${projectId}` },
+          { label: 'Projects', to: '/administration/projects' },
+          { label: summary?.name ?? 'Project', to: `/administration/projects/${projectId}` },
           { label: 'Map' },
         ]}
         title="Plot map"

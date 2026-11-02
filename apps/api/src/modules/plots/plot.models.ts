@@ -1,5 +1,5 @@
 import { model, Schema, type InferSchemaType } from 'mongoose';
-import { PLOT_CATEGORIES, PLOT_FACINGS, PLOT_STATUSES } from '@erp/shared';
+import { PLOT_CATEGORIES, PLOT_FACINGS, PLOT_STATUSES, UNIT_TYPES } from '@erp/shared';
 import { baseOptions, tenantRef, withTenant } from '../../db/base';
 
 const plotSchema = withTenant(
@@ -11,6 +11,10 @@ const plotSchema = withTenant(
       blockId: { type: Schema.Types.ObjectId, ref: 'Block', default: null },
       plotNumber: { type: String, required: true, uppercase: true, trim: true },
       category: { type: String, enum: PLOT_CATEGORIES, default: 'residential' },
+      unitType: { type: String, enum: UNIT_TYPES, default: 'plot' },
+      /** Flats, shops and offices: floor number (block = tower). */
+      floor: Number,
+      configuration: String,
       facing: { type: String, enum: PLOT_FACINGS },
       areaX100: { type: Number, required: true, min: 1, validate: Number.isInteger },
       widthFtX100: { type: Number, min: 0 },
@@ -32,6 +36,7 @@ const plotSchema = withTenant(
 // A plot number is unique within a block (or within the project when it has no block).
 plotSchema.index({ companyId: 1, projectId: 1, blockId: 1, plotNumber: 1 }, { unique: true });
 plotSchema.index({ companyId: 1, projectId: 1, status: 1 });
+plotSchema.index({ companyId: 1, projectId: 1, unitType: 1 });
 plotSchema.index({ companyId: 1, projectId: 1, createdAt: -1 });
 export type PlotDoc = InferSchemaType<typeof plotSchema>;
 export const Plot = model('Plot', plotSchema);

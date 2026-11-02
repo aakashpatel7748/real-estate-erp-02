@@ -6,7 +6,6 @@ import {
   LAND_AREA_UNITS,
   LAND_STATUSES,
   LEAD_ACTIVITY_TYPES,
-  LEAD_SOURCES,
   LEAD_STATUSES,
   PAYMENT_MODES,
   VENDOR_CATEGORIES,
@@ -26,8 +25,7 @@ import {
   phone,
   positivePaise,
   requiredText,
-  trimmed,
-} from './common';
+  trimmed, patchSchema } from './common';
 
 // ---------------- Land acquisition ----------------
 export const landOwnerSchema = z.object({
@@ -55,7 +53,7 @@ export const landParcelSchema = z.object({
   notes: trimmed(2000).optional(),
 });
 export type LandParcelInput = z.infer<typeof landParcelSchema>;
-export const landParcelUpdateSchema = landParcelSchema.partial();
+export const landParcelUpdateSchema = patchSchema(landParcelSchema);
 
 export const landStatusSchema = z.object({
   status: z.enum(LAND_STATUSES),
@@ -80,12 +78,19 @@ export const landListQuerySchema = listQuerySchema.extend({
 });
 
 // ---------------- CRM ----------------
+export const leadSourceKey = z
+  .string()
+  .trim()
+  .toLowerCase()
+  .regex(/^[a-z0-9_]{1,40}$/, 'Invalid lead source');
+
 export const leadSchema = z.object({
   projectId: optional(objectId),
   name: requiredText('Name', 120),
   phone,
   email: optional(email),
-  source: z.enum(LEAD_SOURCES).default('other'),
+  /** A source key from the company's Lead Stages & Sources settings. */
+  source: leadSourceKey.default('other'),
   brokerId: optional(objectId),
   budgetMinPaise: paise.optional(),
   budgetMaxPaise: paise.optional(),
@@ -95,7 +100,7 @@ export const leadSchema = z.object({
   notes: trimmed(2000).optional(),
 });
 export type LeadInput = z.infer<typeof leadSchema>;
-export const leadUpdateSchema = leadSchema.partial();
+export const leadUpdateSchema = patchSchema(leadSchema);
 
 export const leadStatusSchema = z
   .object({
@@ -120,7 +125,7 @@ export const leadAssignSchema = z.object({ assignedTo: objectId.nullable() });
 
 export const leadListQuerySchema = listQuerySchema.extend({
   status: z.enum(LEAD_STATUSES).optional(),
-  source: z.enum(LEAD_SOURCES).optional(),
+  source: leadSourceKey.optional(),
   projectId: objectId.optional(),
   assignedTo: z.union([objectId, z.literal('me'), z.literal('unassigned')]).optional(),
   followUp: z.enum(['due', 'upcoming']).optional(),
@@ -177,7 +182,7 @@ export const workOrderSchema = z.object({
   milestones: z.array(milestoneSchema).max(50).default([]),
 });
 export type WorkOrderInput = z.infer<typeof workOrderSchema>;
-export const workOrderUpdateSchema = workOrderSchema.omit({ projectId: true, vendorId: true }).partial();
+export const workOrderUpdateSchema = patchSchema(workOrderSchema.omit({ projectId: true, vendorId: true }));
 export const workOrderStatusSchema = z.object({ status: z.enum(WORK_ORDER_STATUSES), note: trimmed(300).optional() });
 export const milestoneCompleteSchema = z.object({ completed: z.boolean(), date: optional(isoDate) });
 

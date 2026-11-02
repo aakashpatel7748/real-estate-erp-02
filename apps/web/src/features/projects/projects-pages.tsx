@@ -128,7 +128,7 @@ export function ProjectFormSheet({
       qc.invalidateQueries({ queryKey: ['projects'] });
       toast.success(project ? 'Project updated' : 'Project created');
       onOpenChange(false);
-      if (!project) navigate(`/projects/${p.id}`);
+      if (!project) navigate(`/administration/projects/${p.id}`);
     },
     onError: (err) => {
       const f = fieldErrors(err);
@@ -275,7 +275,7 @@ export function ProjectsPage() {
       ) : (
         <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
           {q.data.items.map((p) => (
-            <Link key={p.id} to={`/projects/${p.id}`} className="group rounded-xl focus-visible:outline-2 focus-visible:outline-ring">
+            <Link key={p.id} to={`/administration/projects/${p.id}`} className="group rounded-xl focus-visible:outline-2 focus-visible:outline-ring">
               <Card className="h-full p-5 transition-shadow group-hover:shadow-md">
                 <div className="flex items-start justify-between gap-2">
                   <div className="min-w-0">
@@ -531,7 +531,7 @@ export function ProjectDetailPage() {
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ['projects'] });
       toast.success('Project archived');
-      navigate('/projects');
+      navigate('/administration/projects');
     },
     onError: (e) => toast.error(errorMessage(e)),
   });
@@ -543,7 +543,7 @@ export function ProjectDetailPage() {
   return (
     <>
       <PageHeader
-        breadcrumbs={[{ label: 'Projects', to: '/projects' }, { label: p.name }]}
+        breadcrumbs={[{ label: 'Projects', to: '/administration/projects' }, { label: p.name }]}
         title={
           <span className="flex items-center gap-3">
             {p.name} <StatusBadge status={p.status} />
@@ -556,7 +556,7 @@ export function ProjectDetailPage() {
               variant="outline"
               onClick={() => {
                 setProjectId(p.id);
-                navigate('/inventory');
+                navigate('/master/units-inventory');
               }}
             >
               <Grid3x3 /> Inventory
@@ -565,7 +565,7 @@ export function ProjectDetailPage() {
               variant="outline"
               onClick={() => {
                 setProjectId(p.id);
-                navigate('/map');
+                navigate('/master/units-inventory/map');
               }}
             >
               <MapIcon /> Map

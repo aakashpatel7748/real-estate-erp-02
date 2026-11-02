@@ -18,3 +18,7 @@ export * from './modules/documents/document.model';
 export * from './modules/notifications/notification.model';
 export * from './modules/audit/audit.model';
 export * from './modules/brokers/commission.model';
+export * from './modules/masters/masters.models';
+export * from './modules/presales/presales.models';
+export * from './modules/postsales/postsales.models';
+export * from './modules/finance/finance.models';

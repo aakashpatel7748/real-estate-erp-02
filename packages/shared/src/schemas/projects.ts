@@ -1,6 +1,6 @@
 import { z } from 'zod';
-import { PLOT_CATEGORIES, PLOT_FACINGS, PLOT_STATUSES, PROJECT_STATUSES } from '../constants/status';
-import { addressSchema, basisPoints, isoDate, listQuerySchema, objectId, optional, paise, requiredText, trimmed } from './common';
+import { PLOT_CATEGORIES, PLOT_FACINGS, PLOT_STATUSES, PROJECT_STATUSES, UNIT_TYPES } from '../constants/status';
+import { addressSchema, basisPoints, isoDate, listQuerySchema, objectId, optional, paise, requiredText, trimmed, patchSchema } from './common';
 
 const code = (label: string) =>
   z
@@ -23,7 +23,7 @@ export const projectSchema = z.object({
   defaultRatePaisePerSqft: paise.optional(),
 });
 export type ProjectInput = z.infer<typeof projectSchema>;
-export const projectUpdateSchema = projectSchema.partial();
+export const projectUpdateSchema = patchSchema(projectSchema);
 
 export const phaseSchema = z.object({
   name: requiredText('Phase name', 100),
@@ -61,6 +61,11 @@ export const plotSchema = z.object({
     .max(20)
     .regex(/^[A-Z0-9-/]+$/, 'Plot number may contain letters, digits, - and /'),
   category: z.enum(PLOT_CATEGORIES).default('residential'),
+  unitType: z.enum(UNIT_TYPES).default('plot'),
+  /** Floor number for flats, shops and offices (0 = ground). */
+  floor: optional(z.number().int().min(-5).max(200)),
+  /** e.g. "2 BHK", "3 BHK + Study". */
+  configuration: optional(trimmed(40)),
   facing: optional(z.enum(PLOT_FACINGS)),
   areaX100: z.number().int().positive('Area must be greater than zero'),
   widthFtX100: z.number().int().min(0).optional(),
@@ -73,7 +78,7 @@ export const plotSchema = z.object({
   mapShape: mapShapeSchema.optional(),
 });
 export type PlotInput = z.infer<typeof plotSchema>;
-export const plotUpdateSchema = plotSchema.partial();
+export const plotUpdateSchema = patchSchema(plotSchema);
 
 export const bulkPlotSchema = z.object({
   phaseId: optional(objectId),
@@ -88,6 +93,9 @@ export const bulkPlotSchema = z.object({
   startNumber: z.number().int().min(1).max(99999),
   count: z.number().int().min(1).max(500),
   category: z.enum(PLOT_CATEGORIES).default('residential'),
+  unitType: z.enum(UNIT_TYPES).default('plot'),
+  floor: optional(z.number().int().min(-5).max(200)),
+  configuration: optional(trimmed(40)),
   areaX100: z.number().int().positive(),
   ratePaisePerSqft: paise,
   plcBp: basisPoints.default(0),
@@ -104,6 +112,7 @@ export const plotListQuerySchema = listQuerySchema.extend({
   phaseId: objectId.optional(),
   blockId: objectId.optional(),
   category: z.enum(PLOT_CATEGORIES).optional(),
+  unitType: z.enum(UNIT_TYPES).optional(),
 });
 
 export const mapConfigSchema = z.object({

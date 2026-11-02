@@ -66,6 +66,7 @@ export interface PlotListQuery {
   phaseId?: string;
   blockId?: string;
   category?: string;
+  unitType?: string;
 }
 
 export async function listPlots(ctx: TenantContext, projectId: string, q: PlotListQuery) {
@@ -75,6 +76,7 @@ export async function listPlots(ctx: TenantContext, projectId: string, q: PlotLi
   if (q.phaseId) filter.phaseId = toObjectId(q.phaseId);
   if (q.blockId) filter.blockId = toObjectId(q.blockId);
   if (q.category) filter.category = q.category;
+  if (q.unitType) filter.unitType = q.unitType;
   if (q.q) filter.plotNumber = new RegExp(escapeRegex(q.q.toUpperCase()));
   let sort = parseSort(q.sort, ['plotNumber', 'areaX100', 'listPricePaise', 'status', 'createdAt', 'ratePaisePerSqft'], {
     plotNumber: 1,
@@ -160,6 +162,9 @@ export async function bulkCreatePlots(ctx: TenantContext, projectId: string, inp
     ...hierarchy,
     plotNumber: `${input.prefix}${input.startNumber + i}`,
     category: input.category,
+    unitType: input.unitType,
+    floor: input.floor,
+    configuration: input.configuration,
     areaX100: input.areaX100,
     ratePaisePerSqft: input.ratePaisePerSqft,
     plcBp: input.plcBp,
@@ -274,7 +279,7 @@ export async function deletePlot(ctx: TenantContext, projectId: string, plotId: 
 export async function getMapData(ctx: TenantContext, projectId: string) {
   const project = await requireProject(ctx, projectId);
   const plots = await Plot.find({ companyId: ctx.companyId, projectId: toObjectId(projectId), deletedAt: null })
-    .select('plotNumber status mapShape areaX100 listPricePaise facing category blockId isCorner')
+    .select('plotNumber status mapShape areaX100 listPricePaise facing category unitType blockId isCorner')
     .lean();
   const summary: Record<string, number> = {};
   for (const p of plots) summary[p.status] = (summary[p.status] ?? 0) + 1;

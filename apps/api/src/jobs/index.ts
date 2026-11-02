@@ -63,7 +63,7 @@ export async function runInstallmentReminders(now = new Date()): Promise<number>
                 type: overdue ? 'installment_overdue' : 'installment_due',
                 title: overdue ? `Overdue: ${bookingNumber}` : `Due soon: ${bookingNumber}`,
                 body: `${inst.name} – ${formatINR(balance)} ${overdue ? 'was due' : 'due'} on ${formatDate(inst.dueDate.toISOString().slice(0, 10))}`,
-                link: `/bookings/${inst.bookingId}`,
+                link: `/post-sales/bookings/${inst.bookingId}`,
                 dedupeKey: `installment:${inst._id}:${today}`,
               },
             },

@@ -195,7 +195,7 @@ export function BrokersPage() {
         loading={list.isPending}
         error={list.error}
         onRetry={() => list.refetch()}
-        onRowClick={(b) => navigate(`/brokers/${b.id}`)}
+        onRowClick={(b) => navigate(`/master/channel-partners/${b.id}`)}
         empty={<EmptyState icon={Handshake} title="No brokers yet" />}
       />
       <BrokerSheet open={creating} onOpenChange={setCreating} />
@@ -239,7 +239,7 @@ export function BrokerDetailPage() {
   return (
     <>
       <PageHeader
-        breadcrumbs={[{ label: 'Brokers', to: '/brokers' }, { label: b.name }]}
+        breadcrumbs={[{ label: 'Brokers', to: '/master/channel-partners' }, { label: b.name }]}
         title={b.name}
         description={`${b.firmName ? `${b.firmName} · ` : ''}${b.phone} · ${b.commissionBp / 100}% commission`}
         actions={
@@ -318,7 +318,7 @@ export function BrokerDetailPage() {
                     </td>
                     <td className="py-2 pr-2">
                       {c.bookingId ? (
-                        <Link className="font-medium hover:underline" to={`/bookings/${c.bookingId.id}`}>
+                        <Link className="font-medium hover:underline" to={`/post-sales/bookings/${c.bookingId.id}`}>
                           {c.bookingId.bookingNumber}
                         </Link>
                       ) : (

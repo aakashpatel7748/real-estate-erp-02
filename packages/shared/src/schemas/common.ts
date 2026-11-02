@@ -53,3 +53,16 @@ export const listQuerySchema = z.object({
 export type ListQuery = z.infer<typeof listQuerySchema>;
 
 export const idParam = z.object({ id: objectId });
+
+/**
+ * Like `schema.partial()` but without defaults: absent keys stay absent, so a PATCH never resets
+ * fields the client did not send (Zod's partial() still applies `.default()` values).
+ */
+export function patchSchema<T extends z.ZodRawShape>(schema: z.ZodObject<T>) {
+  const shape: Record<string, z.ZodType> = {};
+  for (const [key, value] of Object.entries(schema.shape)) {
+    const field = value instanceof z.ZodDefault ? (value.unwrap() as z.ZodType) : (value as z.ZodType);
+    shape[key] = field.optional();
+  }
+  return z.object(shape) as unknown as z.ZodObject<{ [K in keyof T]: z.ZodOptional<T[K]> }>;
+}
